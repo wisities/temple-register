@@ -272,12 +272,23 @@ function registerMonk(ss, data) {
   const values = sheet.getDataRange().getValues();
   const searchName = (data.name || "").toString().trim().toLowerCase();
   const searchCard = (data.idCard || "").toString().replace(/[-\s]/g, "");
+  const searchIdNum = parseInt((data.id || "").replace("MK", ""));
 
   let foundRow = -1;
   for (let i = 1; i < values.length; i++) {
+    const rowIdNum = parseInt(values[i][0]); // Column A: ลำดับที่ (1-422)
     const rowName = values[i][7].toString().trim().toLowerCase(); // Column H (ชื่อพระ)
     const rowCard = values[i][18].toString().replace(/[-\s]/g, ""); // Column S (เลขบัตรประชาชน)
-    if ((searchCard && rowCard === searchCard) || (searchName && rowName.indexOf(searchName) !== -1)) {
+
+    if (searchIdNum && rowIdNum === searchIdNum) {
+      foundRow = i + 1;
+      break;
+    }
+    if (searchCard && rowCard === searchCard) {
+      foundRow = i + 1;
+      break;
+    }
+    if (searchName && rowName.indexOf(searchName) !== -1) {
       foundRow = i + 1;
       break;
     }
@@ -286,6 +297,10 @@ function registerMonk(ss, data) {
   const now = Utilities.formatDate(new Date(), "Asia/Bangkok", "yyyy-MM-dd HH:mm:ss");
 
   if (foundRow > 0) {
+    // บันทึกเลขบัตรประชาชนลงใน Column S (คอลัมน์ 19)
+    if (data.idCard) {
+      sheet.getRange(foundRow, 19).setValue(data.idCard.toString().trim());
+    }
     sheet.getRange(foundRow, 21).setValue("ลงทะเบียนแล้ว"); // Column U: สถานะลงทะเบียน
     sheet.getRange(foundRow, 22).setValue(now);               // Column V: เวลาที่ลงทะเบียน
     return { status: "success", message: "ลงทะเบียนพระสำเร็จ", registeredAt: now, row: foundRow };

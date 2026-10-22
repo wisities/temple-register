@@ -110,79 +110,89 @@
       </div>
 
       <div class="workflow-grid">
-        <!-- 1.1 สแกนบัตรประชาชน -->
-        <div class="flow-card" style="grid-column: span 3;">
+        <!-- 1.1 เสียบบัตรประชาชน & 1.2 ค้นหาเลือกรายนามพระสงฆ์ -->
+        <div class="flow-card" style="grid-column: span 6;">
           <div class="flow-card-header header-monk">
-            <span>1.1 สแกนบัตรประชาชน</span>
-            <span style="font-size: 0.8rem; opacity: 0.8;">Smart Card</span>
+            <span>1.1 เสียบบัตรประชาชน & 1.2 ค้นหาเลือกรายนามพระสงฆ์</span>
+            <span style="font-size: 0.8rem; opacity: 0.8;">Smart Card & Search</span>
           </div>
           <div class="flow-card-body">
-            <div class="card-reader-box">
-              <div class="card-reader-img-wrap">
-                <img src="assets/smartcard_reader.jpg" alt="Smart Card Reader">
-              </div>
-              <div class="scanner-caption">เสียบบัตรประชาชน ระบบอ่านข้อมูลอัตโนมัติ</div>
-              <div class="scanner-hint">รองรับเครื่องอ่านบัตรสมาร์ทการ์ด USB / หรือจำลองค้นหา</div>
-
-              <!-- Quick Selector for testing -->
-              <div class="id-input-group">
-                <label for="monkQuickSelect">เลือกรายนามพระสงฆ์ตัวอย่าง (ทดสอบ):</label>
-                <select id="monkQuickSelect" class="select-control">
-                  <option value="">-- เลือกเพื่อจำลองเสียบบัตร --</option>
-                </select>
-              </div>
-
-              <!-- Manual ID Card Number -->
-              <div class="id-input-group">
-                <label for="monkIdCardInput">หรือกรอกเลขบัตรประชาชน 13 หลัก / ชื่อวัด:</label>
-                <div style="display: flex; gap: 0.5rem; width: 100%;">
-                  <input type="text" id="monkIdCardInput" class="input-control" placeholder="1-xxxx-xxxxx-xx-x" maxlength="20">
-                  <button id="btnMonkScan" class="btn btn-monk" style="white-space: nowrap;">
-                    🔍 อ่านบัตร
-                  </button>
+            
+            <!-- 1.1 เครื่องอ่านบัตรประชาชน -->
+            <div style="background: #fff7ed; border: 1px solid #fed7aa; padding: 0.85rem; border-radius: 8px; margin-bottom: 1rem;">
+              <div style="display: flex; gap: 1rem; align-items: center;">
+                <div style="width: 68px; height: 68px; border-radius: 8px; overflow: hidden; flex-shrink: 0; border: 1px solid #cbd5e1; background: #fff;">
+                  <img src="assets/smartcard_reader.jpg" alt="Smart Card Reader" style="width: 100%; height: 100%; object-fit: contain;">
+                </div>
+                <div style="flex: 1;">
+                  <div style="font-weight: 600; color: #9a3412; font-size: 0.92rem; margin-bottom: 0.2rem;">
+                    1.1 เครื่องอ่านบัตรประชาชน (Smart Card Reader)
+                  </div>
+                  <div style="font-size: 0.78rem; color: #64748b; margin-bottom: 0.45rem;">
+                    เสียบบัตรประชาชนที่เครื่องอ่าน หรือกรอกเลขประจำตัวประชาชน 13 หลัก
+                  </div>
+                  <div style="display: flex; gap: 0.5rem;">
+                    <input type="text" id="monkIdCardInput" class="input-control" placeholder="เลขบัตรประชาชน 13 หลัก (จากการเสียบบัตร)" maxlength="20" style="font-weight: 600; font-size: 0.95rem;">
+                    <button type="button" id="btnMonkScan" class="btn btn-monk" style="white-space: nowrap;">
+                      🔍 ตรวจสอบบัตร
+                    </button>
+                  </div>
                 </div>
               </div>
+              <div id="cardStatusIndicator" style="margin-top: 0.5rem; font-size: 0.8rem; display: none;"></div>
+            </div>
 
-              <div style="font-size: 0.75rem; color: #94a3b8; text-align: left; width: 100%;">
-                💡 ลองพิมพ์ชื่อพระ เช่น <em>"เลี่ยม"</em>, <em>"บุญชู"</em>, <em>"คูณ"</em> หรือเลขบัตร
+            <!-- 1.2 ค้นหาข้อมูลพระสงฆ์ (เหมือน 3.1) -->
+            <div style="background: #fafaf9; border: 1px solid #e7e5e4; padding: 0.85rem; border-radius: 8px; margin-bottom: 0.75rem;">
+              <div style="font-weight: 600; color: #78350f; font-size: 0.88rem; margin-bottom: 0.5rem;">
+                1.2 ค้นหาข้อมูลพระสงฆ์ (ฐานข้อมูล 422 รูป)
+              </div>
+              <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-bottom: 0.5rem;">
+                <div>
+                  <label style="font-size: 0.75rem; color: #475569; font-weight: 500;">ชื่อพระ / ฉายา:</label>
+                  <input type="text" id="monkFilterName" class="input-control" placeholder="เช่น เลี่ยม, บุญชู">
+                </div>
+                <div>
+                  <label style="font-size: 0.75rem; color: #475569; font-weight: 500;">สาขา:</label>
+                  <input type="text" id="monkFilterBranch" class="input-control" placeholder="เช่น สาขาที่ 008">
+                </div>
+                <div>
+                  <label style="font-size: 0.75rem; color: #475569; font-weight: 500;">ชื่อวัด:</label>
+                  <input type="text" id="monkFilterTemple" class="input-control" placeholder="เช่น วัดหนองป่าพง">
+                </div>
+              </div>
+              <div style="display: flex; justify-content: flex-end; gap: 0.5rem;">
+                <button type="button" class="btn btn-secondary btn-sm" id="btnMonkFilterClear">ล้างค่า</button>
+                <button type="button" class="btn btn-monk btn-sm" id="btnMonkFilterSearch">
+                  🔍 กรองรายชื่อ
+                </button>
               </div>
             </div>
-          </div>
-        </div>
 
-        <!-- 1.2 ตรวจสอบรายชื่อ -->
-        <div class="flow-card" style="grid-column: span 3;">
-          <div class="flow-card-header header-monk">
-            <span>1.2 ตรวจสอบรายชื่อ</span>
-            <span style="font-size: 0.8rem; opacity: 0.8;">Verification</span>
-          </div>
-          <div class="flow-card-body">
-            <div id="monkCheckingState" class="checking-box" style="display: none;">
-              <div class="spinner-search"></div>
-              <div class="checking-title">กำลังตรวจสอบข้อมูล...</div>
-              <div class="checking-desc">กรุณารอสักครู่ ระบบกำลังเทียบกับฐานข้อมูลนิมนต์</div>
+            <!-- ตารางรายนามพระสงฆ์ที่ฟิลเตอร์ได้ (เหมือน 3.2) -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+              <span style="font-weight: 600; color: #78350f; font-size: 0.85rem;">
+                เลือกรายนามพระสงฆ์ (คลิกแถวเพื่อเลือก):
+              </span>
+              <span style="font-size: 0.75rem; color: #64748b;" id="monkFilterCount">แสดง 422 รูป</span>
+            </div>
+            <div class="table-responsive" style="max-height: 250px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px;">
+              <table class="custom-table" id="monksSelectTable">
+                <thead>
+                  <tr>
+                    <th style="width: 45px;">ลำดับ</th>
+                    <th>ชื่อ / ฉายา</th>
+                    <th>วัด</th>
+                    <th>สาขา / จังหวัด</th>
+                    <th style="width: 80px;">สถานะ</th>
+                  </tr>
+                </thead>
+                <tbody id="monksSelectTableBody">
+                  <!-- Dynamic rows -->
+                </tbody>
+              </table>
             </div>
 
-            <div id="monkIdleState" class="checking-box">
-              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#ea580c" stroke-width="1.5">
-                <circle cx="11" cy="11" r="8"/>
-                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-              </svg>
-              <div class="checking-title">พร้อมตรวจสอบข้อมูล</div>
-              <div class="checking-desc">เสียบบัตรประชาชน หรือกดอ่านบัตรในขั้นตอน 1.1</div>
-            </div>
-
-            <!-- Result routing indicator -->
-            <div id="monkResultRouting" style="display: none; width: 100%; margin-top: 1rem;">
-              <div id="routeFound" style="display: none; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; padding: 0.75rem; color: #065f46; font-size: 0.85rem;">
-                ✓ <strong>พบในรายชื่อที่เชิญ/นิมนต์</strong><br>
-                ระบบดึงข้อมูลที่พักและสิทธิ์อัตโนมัติ (ดูข้อ 1.3)
-              </div>
-              <div id="routeNotFound" style="display: none; background: #fff1f2; border: 1px solid #fecdd3; border-radius: 8px; padding: 0.75rem; color: #9f1239; font-size: 0.85rem;">
-                ✕ <strong>ไม่พบในรายชื่อที่เชิญ</strong><br>
-                กรุณากรอกข้อมูลในแบบฟอร์มพระนอกรายชื่อ (ดูข้อ 1.4)
-              </div>
-            </div>
           </div>
         </div>
 
@@ -190,14 +200,25 @@
         <div class="flow-card" style="grid-column: span 6;">
           <div class="flow-card-header header-monk">
             <span id="monkDetailHeader">1.3 ข้อมูลการลงทะเบียนพระสงฆ์</span>
-            <span id="monkDetailSubheader" class="status-badge available">รอการตรวจสอบ</span>
+            <span id="monkDetailSubheader" class="status-badge available">รอเลือกข้อมูล</span>
           </div>
           <div class="flow-card-body">
             
             <!-- Default Placeholder when no search -->
             <div id="monkDetailPlaceholder" style="text-align: center; padding: 3rem 1rem; color: #94a3b8;">
-              <p style="font-size: 1rem; margin-bottom: 0.5rem;">ยังไม่มีข้อมูลพระสงฆ์ที่เลือก</p>
-              <p style="font-size: 0.85rem;">กรุณาสแกนบัตร หรือเลือกรายนามเพื่อเริ่มลงทะเบียน</p>
+              <p style="font-size: 1.05rem; margin-bottom: 0.5rem; color: #78350f; font-weight: 600;">ยังไม่มีข้อมูลพระสงฆ์ที่เลือก</p>
+              <p style="font-size: 0.88rem; color: #64748b;">เสียบบัตรประชาชนที่เครื่องอ่าน หรือคลิกเลือกรายนามพระสงฆ์จากตารางด้านซ้าย</p>
+            </div>
+
+            <!-- Notice when card not found but held in buffer -->
+            <div id="monkCardHeldNotice" style="display: none; background: #fef3c7; border: 1px solid #fde68a; border-radius: 8px; padding: 0.75rem; margin-bottom: 1rem; color: #92400e; font-size: 0.85rem;">
+              <div style="font-weight: 600; margin-bottom: 0.25rem;">💳 เสียบบัตรประชาชนคาไว้ในระบบแล้ว: <span id="heldCardNumber"></span></div>
+              <div>เนื่องจากฐานข้อมูลเดิมไม่มีเลขบัตรประชาชน ท่านสามารถค้นหาชื่อพระจากตารางด้านซ้าย แล้วคลิกเลือก ระบบจะนำเลขบัตรนี้ไปผูกและบันทึกให้อัตโนมัติ</div>
+              <div style="margin-top: 0.35rem;">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="displayWalkinMonkForm(document.getElementById('monkIdCardInput').value.trim())" style="font-size: 0.75rem;">
+                  หรือคลิกที่นี่เพื่อไป 'ลงทะเบียนพระนอกรายชื่อ'
+                </button>
+              </div>
             </div>
 
             <!-- Form 1.3: พบในรายชื่อที่เชิญ -->
@@ -209,8 +230,18 @@
                 <div class="profile-info-grid">
                   <div class="info-item full-width">
                     <span class="info-label">ชื่อ / ฉายา:</span>
-                    <span id="infoMonkName" class="info-value" style="font-size: 1.05rem; font-weight: 600; color: #92400e;">-</span>
+                    <span id="infoMonkName" class="info-value" style="font-size: 1.1rem; font-weight: 700; color: #92400e;">-</span>
                   </div>
+
+                  <!-- 13-digit Citizen ID Card Field -->
+                  <div class="info-item full-width" style="background: #fffbeb; padding: 0.6rem 0.85rem; border-radius: 6px; border: 1px solid #fde68a;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                      <span class="info-label" style="font-weight: 600; color: #92400e;">เลขประจำตัวประชาชน (13 หลัก):</span>
+                      <span id="infoCardSourceBadge" style="font-size: 0.75rem; padding: 0.15rem 0.5rem; border-radius: 999px; background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; display: none;">💳 ดึงจากบัตรที่เสียบคาไว้</span>
+                    </div>
+                    <input type="text" id="infoMonkIdCard" class="input-control" placeholder="ยังไม่มีเลขบัตร (จะบันทึกจากบัตรที่เสียบ)" maxlength="20" style="font-weight: 700; color: #92400e; font-size: 1rem; background: #fff;">
+                  </div>
+
                   <div class="info-item">
                     <span class="info-label">วัด:</span>
                     <span id="infoMonkTemple" class="info-value">-</span>
@@ -341,10 +372,10 @@
               <div class="scanner-hint">อ่านข้อมูลชื่อ นามสกุล วันเกิด เพศ และที่อยู่จากชิปการ์ด</div>
 
               <div class="id-input-group">
-                <label>จำลองอ่านข้อมูลบัตรประชาชนญาติโยม:</label>
+                <label>อ่านข้อมูลจากบัตรประชาชนญาติโยม (Smart Card):</label>
                 <div style="display: flex; gap: 0.5rem; width: 100%;">
                   <button type="button" id="btnSimulateLayScan" class="btn btn-lay" style="width: 100%;">
-                    💳 จำลองอ่านข้อมูลจากบัตรประชาชน
+                    💳 อ่านข้อมูลจากบัตรประชาชน
                   </button>
                 </div>
               </div>

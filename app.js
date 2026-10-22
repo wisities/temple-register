@@ -150,30 +150,96 @@ function switchTab(tabId) {
  * FLOW 1: ลงทะเบียนพระสงฆ์ (Monk Registration Workflow)
  * --------------------------------------------------------------------------
  */
+// Filter state for Tab 1
+const monkFilterState = {
+  name: "",
+  branch: "",
+  temple: ""
+};
+
+function renderMonkSelectTable(customList = null) {
+  const tbody = document.getElementById("monksSelectTableBody");
+  const countEl = document.getElementById("monkFilterCount");
+  if (!tbody) return;
+
+  const list = customList || getFilteredMonksList();
+  if (countEl) countEl.textContent = `แสดง ${list.length} รูป (จากทั้งหมด ${state.monks.length})`;
+
+  tbody.innerHTML = "";
+  if (list.length === 0) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td colspan="5" style="text-align: center; color: #94a3b8; padding: 1.5rem;">ไม่พบรายนามพระสงฆ์ที่ตรงกับคำค้นหา</td>`;
+    tbody.appendChild(tr);
+    return;
+  }
+
+  // Display top 100 matches for high performance
+  list.slice(0, 100).forEach((m, idx) => {
+    const tr = document.createElement("tr");
+    const isReg = m.status === "ลงทะเบียนแล้ว";
+    const isSelected = state.currentSelectedMonk && state.currentSelectedMonk.id === m.id;
+    if (isSelected) tr.className = "selected-row";
+
+    tr.style.cursor = "pointer";
+    tr.innerHTML = `
+      <td>${idx + 1}</td>
+      <td style="font-weight: 600; color: #78350f;">${m.name}</td>
+      <td>${m.temple}</td>
+      <td>${m.branch || m.province || '-'}</td>
+      <td><span class="status-badge ${isReg ? 'registered' : 'available'}">${isReg ? 'ลงแล้ว' : 'ยังไม่ลง'}</span></td>
+    `;
+
+    tr.addEventListener("click", () => {
+      // Highlight row
+      const allRows = tbody.querySelectorAll("tr");
+      allRows.forEach(r => r.classList.remove("selected-row"));
+      tr.classList.add("selected-row");
+
+      // Check if smart card is currently inserted / entered in input
+      const currentCard = document.getElementById("monkIdCardInput")?.value.trim() || "";
+      if (currentCard) {
+        // Bind this card number to the monk
+        m.idCard = currentCard;
+        showToast(`ผูกเลขบัตร ${currentCard} กับ ${m.name} เรียบร้อยแล้ว (กด 'ยืนยันลงทะเบียน' เพื่อบันทึกลงฐานข้อมูล)`, "success");
+      }
+
+      // Hide card held notice
+      const heldNotice = document.getElementById("monkCardHeldNotice");
+      if (heldNotice) heldNotice.style.display = "none";
+
+      displayInvitedMonk(m, !!currentCard);
+    });
+
+    tbody.appendChild(tr);
+  });
+}
+
+function getFilteredMonksList() {
+  const fName = (monkFilterState.name || "").toLowerCase().trim();
+  const fBranch = (monkFilterState.branch || "").toLowerCase().trim();
+  const fTemple = (monkFilterState.temple || "").toLowerCase().trim();
+
+  return state.monks.filter(m => {
+    const mName = (m.name || "").toLowerCase();
+    const mBranch = (m.branch || m.province || "").toLowerCase();
+    const mTemple = (m.temple || "").toLowerCase();
+
+    const matchName = !fName || mName.includes(fName);
+    const matchBranch = !fBranch || mBranch.includes(fBranch);
+    const matchTemple = !fTemple || mTemple.includes(fTemple);
+
+    return matchName && matchBranch && matchTemple;
+  });
+}
+
+// Backward compatibility for existing calls
 function populateMonkQuickSelect() {
-  const select = document.getElementById("monkQuickSelect");
-  select.innerHTML = `<option value="">-- เลือกเพื่อจำลองเสียบบัตร (พระสงฆ์ 422 รายนาม) --</option>`;
-
-  state.monks.forEach(m => {
-    const opt = document.createElement("option");
-    opt.value = m.id;
-    opt.textContent = `${m.name} - ${m.temple} (${m.province}) [${m.status}]`;
-    select.appendChild(opt);
-  });
-
-  select.addEventListener("change", (e) => {
-    const monkId = e.target.value;
-    if (!monkId) return;
-    const monk = state.monks.find(m => m.id === monkId);
-    if (monk) {
-      document.getElementById("monkIdCardInput").value = monk.idCard;
-      triggerMonkScan(monk.idCard);
-    }
-  });
+  renderMonkSelectTable();
 }
 
 function populateTempleDatalist() {
   const datalist = document.getElementById("templeList");
+  if (!datalist) return;
   datalist.innerHTML = "";
   const uniqueTemples = [...new Set(state.monks.map(m => m.temple).filter(Boolean))].sort();
   uniqueTemples.forEach(temple => {
@@ -187,80 +253,151 @@ function setupMonkWorkflow() {
   const btnScan = document.getElementById("btnMonkScan");
   const inputCard = document.getElementById("monkIdCardInput");
 
-  btnScan.addEventListener("click", () => {
-    const val = inputCard.value.trim();
-    if (!val) {
-      showToast("กรุณากรอกเลขบัตรประชาชน หรือชื่อพระ/วัด", "warning");
-      return;
-    }
-    triggerMonkScan(val);
-  });
+  if (btnScan && inputCard) {
+    btnScan.addEventListener("click", () => {
+      const val = inputCard.value.trim();
+      if (!val) {
+        showToast("กรุณาเสียบบัตรประชาชน หรือกรอกเลขบัตร 13 หลัก", "warning");
+        return;
+      }
+      triggerMonkScan(val);
+    });
 
-  inputCard.addEventListener("keyup", (e) => {
-    if (e.key === "Enter") {
-      btnScan.click();
-    }
-  });
+    inputCard.addEventListener("keyup", (e) => {
+      if (e.key === "Enter") {
+        btnScan.click();
+      }
+    });
+
+    inputCard.addEventListener("input", (e) => {
+      const cardInd = document.getElementById("cardStatusIndicator");
+      if (cardInd) {
+        if (e.target.value.trim().length >= 10) {
+          cardInd.style.display = "block";
+          cardInd.style.color = "#166534";
+          cardInd.innerHTML = `💳 <strong>ตรวจพบเลขบัตร:</strong> ${e.target.value.trim()} (พร้อมผูกเข้ากับพระรูปที่เลือก)`;
+        } else {
+          cardInd.style.display = "none";
+        }
+      }
+    });
+  }
+
+  // 1.2 Filters (เหมือน 3.1)
+  const inputFName = document.getElementById("monkFilterName");
+  const inputFBranch = document.getElementById("monkFilterBranch");
+  const inputFTemple = document.getElementById("monkFilterTemple");
+  const btnFilterSearch = document.getElementById("btnMonkFilterSearch");
+  const btnFilterClear = document.getElementById("btnMonkFilterClear");
+
+  function applyFilters() {
+    monkFilterState.name = inputFName?.value || "";
+    monkFilterState.branch = inputFBranch?.value || "";
+    monkFilterState.temple = inputFTemple?.value || "";
+    renderMonkSelectTable();
+  }
+
+  if (inputFName) inputFName.addEventListener("input", applyFilters);
+  if (inputFBranch) inputFBranch.addEventListener("input", applyFilters);
+  if (inputFTemple) inputFTemple.addEventListener("input", applyFilters);
+
+  if (btnFilterSearch) {
+    btnFilterSearch.addEventListener("click", applyFilters);
+  }
+
+  if (btnFilterClear) {
+    btnFilterClear.addEventListener("click", () => {
+      if (inputFName) inputFName.value = "";
+      if (inputFBranch) inputFBranch.value = "";
+      if (inputFTemple) inputFTemple.value = "";
+      monkFilterState.name = "";
+      monkFilterState.branch = "";
+      monkFilterState.temple = "";
+      renderMonkSelectTable();
+    });
+  }
 
   // Confirm Registration Button (1.3)
-  document.getElementById("btnConfirmMonkRegistration").addEventListener("click", () => {
-    if (!state.currentSelectedMonk) return;
-    confirmMonkRegistration(state.currentSelectedMonk);
-  });
+  const btnConfirmReg = document.getElementById("btnConfirmMonkRegistration");
+  if (btnConfirmReg) {
+    btnConfirmReg.addEventListener("click", () => {
+      if (!state.currentSelectedMonk) return;
+      confirmMonkRegistration(state.currentSelectedMonk);
+    });
+  }
 
   // Save Walkin Monk Button (1.4)
-  document.getElementById("btnSaveWalkinMonk").addEventListener("click", () => {
-    saveWalkinMonk();
-  });
+  const btnSaveWalkin = document.getElementById("btnSaveWalkinMonk");
+  if (btnSaveWalkin) {
+    btnSaveWalkin.addEventListener("click", () => {
+      saveWalkinMonk();
+    });
+  }
+
+  // Initial render of table
+  renderMonkSelectTable();
 }
 
 function triggerMonkScan(searchTerm) {
-  // Show checking animation (Step 1.2)
-  document.getElementById("monkIdleState").style.display = "none";
-  document.getElementById("monkCheckingState").style.display = "flex";
-  document.getElementById("monkResultRouting").style.display = "none";
-  document.getElementById("monkDetailPlaceholder").style.display = "none";
-  document.getElementById("monkInvitedForm").style.display = "none";
-  document.getElementById("monkWalkinForm").style.display = "none";
-
   const cleanTerm = searchTerm.replace(/[-\s]/g, "").toLowerCase();
+  const heldNotice = document.getElementById("monkCardHeldNotice");
+  const heldNum = document.getElementById("heldCardNumber");
+  const placeholder = document.getElementById("monkDetailPlaceholder");
 
-  setTimeout(() => {
-    document.getElementById("monkCheckingState").style.display = "none";
-    document.getElementById("monkResultRouting").style.display = "block";
+  // Search in invited monks:
+  // 1. Match by clean ID Card
+  // 2. Or match by monk name
+  // 3. Or match by MK ID
+  const found = state.monks.find(m => {
+    const mCard = (m.idCard || "").replace(/[-\s]/g, "").toLowerCase();
+    const mName = (m.name || "").toLowerCase();
+    const mTemple = (m.temple || "").toLowerCase();
+    return (
+      (mCard && mCard === cleanTerm) ||
+      m.id.toLowerCase() === cleanTerm ||
+      (mName && mName.includes(cleanTerm)) ||
+      (mTemple && mTemple.includes(cleanTerm))
+    );
+  });
 
-    // Search in invited monks
-    const found = state.monks.find(m => {
-      const mCard = (m.idCard || "").replace(/[-\s]/g, "").toLowerCase();
-      const mName = (m.name || "").toLowerCase();
-      const mTemple = (m.temple || "").toLowerCase();
-      return (
-        m.id.toLowerCase() === cleanTerm ||
-        mCard.includes(cleanTerm) ||
-        mName.includes(cleanTerm) ||
-        mTemple.includes(cleanTerm)
-      );
-    });
-
-    if (found) {
-      // 1.3 Found in invited list!
-      document.getElementById("routeFound").style.display = "block";
-      document.getElementById("routeNotFound").style.display = "none";
-      displayInvitedMonk(found);
-      showToast(`พบข้อมูลนิมนต์: ${found.name}`, "success");
-    } else {
-      // 1.4 Not found in invited list -> walkin form
-      document.getElementById("routeFound").style.display = "none";
-      document.getElementById("routeNotFound").style.display = "block";
-      displayWalkinMonkForm(searchTerm);
-      showToast("ไม่พบในรายชื่อนิมนต์ เปิดแบบฟอร์มลงทะเบียนพระนอกรายชื่อ", "warning");
+  if (found) {
+    // If the input was a card number, make sure it's bound to this monk
+    if (searchTerm.replace(/[-\s]/g, "").length >= 10) {
+      found.idCard = searchTerm.trim();
     }
-  }, 600); // 600ms smooth simulation
+    if (heldNotice) heldNotice.style.display = "none";
+    displayInvitedMonk(found, true);
+    showToast(`พบรายนามพระสงฆ์: ${found.name}`, "success");
+    renderMonkSelectTable();
+  } else {
+    // Not found in database directly by this card or search term
+    // Keep the card number held in buffer and prompt user to search/select from table
+    if (placeholder) placeholder.style.display = "none";
+    document.getElementById("monkInvitedForm").style.display = "none";
+    document.getElementById("monkWalkinForm").style.display = "none";
+
+    if (heldNotice && heldNum) {
+      heldNum.textContent = searchTerm;
+      heldNotice.style.display = "block";
+    }
+
+    showToast(`เสียบบัตรประชาชน (${searchTerm}) คาไว้แล้ว: กรุณาค้นหาหรือเลือกชื่อพระจากตารางด้านซ้าย เพื่อผูกเลขบัตรนี้`, "warning");
+
+    // Also auto-filter the table if the search term wasn't purely digits
+    if (isNaN(cleanTerm)) {
+      const fName = document.getElementById("monkFilterName");
+      if (fName) {
+        fName.value = searchTerm;
+        monkFilterState.name = searchTerm;
+        renderMonkSelectTable();
+      }
+    }
+  }
 }
 
-function displayInvitedMonk(monk) {
+function displayInvitedMonk(monk, fromHeldCard = false) {
   state.currentSelectedMonk = monk;
-  document.getElementById("monkDetailHeader").textContent = "1.3 แสดงข้อมูลพระที่ได้รับเชิญ";
+  document.getElementById("monkDetailHeader").textContent = "1.3 ข้อมูลการลงทะเบียนพระสงฆ์";
   
   const statusBadge = document.getElementById("monkDetailSubheader");
   if (monk.status === "ลงทะเบียนแล้ว") {
@@ -268,7 +405,7 @@ function displayInvitedMonk(monk) {
     statusBadge.textContent = "• ลงทะเบียนแล้ว";
   } else {
     statusBadge.className = "status-badge available";
-    statusBadge.textContent = "• ลงทะเบียนได้";
+    statusBadge.textContent = "• พร้อมลงทะเบียน";
   }
 
   const photoElem = document.getElementById("infoMonkPhoto");
@@ -287,7 +424,22 @@ function displayInvitedMonk(monk) {
   document.getElementById("infoMonkVassa").textContent = `${monk.vassa} พรรษา`;
   document.getElementById("infoMonkHotel").textContent = monk.hotel || "กุฏิรับรองสงฆ์ อาคารเฉลิมพระเกียรติ";
   document.getElementById("infoMonkSlipRight").textContent = monk.allowSlip ? `รับใบปวารณา (มีปัจจัย ${monk.amount.toLocaleString()} บาท)` : "ไม่มีปัจจัย";
-  
+
+  // 13-digit ID card field
+  const idCardInput = document.getElementById("infoMonkIdCard");
+  const badgeSource = document.getElementById("infoCardSourceBadge");
+  if (idCardInput) {
+    idCardInput.value = monk.idCard || "";
+  }
+  if (badgeSource) {
+    if (monk.idCard) {
+      badgeSource.style.display = "inline-block";
+      badgeSource.textContent = fromHeldCard ? "💳 ผูกจากบัตรที่เสียบคาไว้" : "💳 บันทึกไว้แล้ว";
+    } else {
+      badgeSource.style.display = "none";
+    }
+  }
+
   const statusElem = document.getElementById("infoMonkStatus");
   statusElem.className = monk.status === "ลงทะเบียนแล้ว" ? "status-badge registered" : "status-badge available";
   statusElem.textContent = monk.status === "ลงทะเบียนแล้ว" ? "✓ ลงทะเบียนเรียบร้อยแล้ว" : "• พร้อมยืนยันลงทะเบียน";
@@ -296,28 +448,37 @@ function displayInvitedMonk(monk) {
 
   const btnConfirm = document.getElementById("btnConfirmMonkRegistration");
   if (monk.status === "ลงทะเบียนแล้ว") {
-    btnConfirm.textContent = "✓ ลงทะเบียนแล้ว (กดเพื่ออัปเดตซ้ำ)";
+    btnConfirm.textContent = "✓ ลงทะเบียนแล้ว (กดเพื่ออัปเดตเลขบัตร/สถานะซ้ำ)";
     btnConfirm.style.background = "#15803d";
   } else {
     btnConfirm.textContent = "✓ ยืนยันลงทะเบียนพระสงฆ์";
     btnConfirm.style.background = "";
   }
 
+  document.getElementById("monkDetailPlaceholder").style.display = "none";
   document.getElementById("monkInvitedForm").style.display = "block";
   document.getElementById("monkWalkinForm").style.display = "none";
 }
 
 function confirmMonkRegistration(monk) {
   const now = new Date().toLocaleString("th-TH");
+
+  // Read latest value from infoMonkIdCard
+  const idCardInput = document.getElementById("infoMonkIdCard");
+  if (idCardInput && idCardInput.value.trim()) {
+    monk.idCard = idCardInput.value.trim();
+  }
+
   monk.status = "ลงทะเบียนแล้ว";
   monk.registeredAt = now;
 
   saveLocal("TEMPLE_MONKS_DATA", state.monks);
   updateAllKpis();
+  renderMonkSelectTable();
   renderSlipMonksTable();
   renderReportTable();
 
-  showToast(`ยืนยันการลงทะเบียน ${monk.name} สำเร็จ!`, "success");
+  showToast(`ยืนยันการลงทะเบียน ${monk.name} สำเร็จ! ${monk.idCard ? '(บันทึกเลขบัตร: ' + monk.idCard + ')' : ''}`, "success");
   displayInvitedMonk(monk);
 
   // Send to Google Sheets if connected
@@ -334,7 +495,7 @@ function confirmMonkRegistration(monk) {
       registeredAt: now
     }).then(res => {
       if (res && res.status === "success") {
-        showToast("ซิงก์ข้อมูลลงทะเบียนขึ้น Google Sheet เรียบร้อย", "success");
+        showToast("ซิงก์ข้อมูลและเลขบัตรประชาชนขึ้น Google Sheet สำเร็จ", "success");
       }
     });
   }
@@ -346,13 +507,14 @@ function displayWalkinMonkForm(searchCard) {
   document.getElementById("monkDetailSubheader").className = "status-badge pending";
   document.getElementById("monkDetailSubheader").textContent = "พระนอกรายชื่อ";
 
-  document.getElementById("walkinIdCard").value = searchCard.length > 5 ? searchCard : "";
+  document.getElementById("walkinIdCard").value = (searchCard && searchCard.length > 5) ? searchCard : "";
   document.getElementById("walkinName").value = "";
   document.getElementById("walkinVassa").value = "";
   document.getElementById("walkinTemple").value = "";
   document.getElementById("walkinProvince").value = "";
   document.getElementById("walkinPhone").value = "";
 
+  document.getElementById("monkDetailPlaceholder").style.display = "none";
   document.getElementById("monkInvitedForm").style.display = "none";
   document.getElementById("monkWalkinForm").style.display = "block";
 }
@@ -406,17 +568,29 @@ function saveWalkinMonk() {
 
 function resetMonkWorkflow() {
   state.currentSelectedMonk = null;
-  document.getElementById("monkIdCardInput").value = "";
-  document.getElementById("monkQuickSelect").value = "";
-  document.getElementById("monkIdleState").style.display = "flex";
-  document.getElementById("monkCheckingState").style.display = "none";
-  document.getElementById("monkResultRouting").style.display = "none";
-  document.getElementById("monkDetailPlaceholder").style.display = "block";
-  document.getElementById("monkInvitedForm").style.display = "none";
-  document.getElementById("monkWalkinForm").style.display = "none";
-  document.getElementById("monkDetailHeader").textContent = "1.3 ข้อมูลการลงทะเบียนพระสงฆ์";
-  document.getElementById("monkDetailSubheader").className = "status-badge available";
-  document.getElementById("monkDetailSubheader").textContent = "รอการตรวจสอบ";
+  const inputCard = document.getElementById("monkIdCardInput");
+  if (inputCard) inputCard.value = "";
+  const cardInd = document.getElementById("cardStatusIndicator");
+  if (cardInd) cardInd.style.display = "none";
+  const heldNotice = document.getElementById("monkCardHeldNotice");
+  if (heldNotice) heldNotice.style.display = "none";
+  const placeholder = document.getElementById("monkDetailPlaceholder");
+  if (placeholder) placeholder.style.display = "block";
+  const invitedForm = document.getElementById("monkInvitedForm");
+  if (invitedForm) invitedForm.style.display = "none";
+  const walkinForm = document.getElementById("monkWalkinForm");
+  if (walkinForm) walkinForm.style.display = "none";
+  const header = document.getElementById("monkDetailHeader");
+  if (header) header.textContent = "1.3 ข้อมูลการลงทะเบียนพระสงฆ์";
+  const subheader = document.getElementById("monkDetailSubheader");
+  if (subheader) {
+    subheader.className = "status-badge available";
+    subheader.textContent = "รอเลือกข้อมูล";
+  }
+  const tbody = document.getElementById("monksSelectTableBody");
+  if (tbody) {
+    tbody.querySelectorAll("tr").forEach(r => r.classList.remove("selected-row"));
+  }
 }
 
 function addNewTemplePrompt() {
@@ -452,7 +626,7 @@ function setupLayWorkflow() {
     document.getElementById("layPhone").value = p.phone;
     document.getElementById("layEmergencyPhone").value = p.emergencyPhone;
 
-    showToast(`จำลองอ่านข้อมูลจากบัตรประชาชน: ${p.name}`, "success");
+    showToast(`อ่านข้อมูลจากบัตรประชาชน: ${p.name}`, "success");
   });
 
   document.getElementById("btnConfirmLayRegistration").addEventListener("click", () => {

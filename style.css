@@ -790,8 +790,10 @@ body {
   background: #f0fdf4;
 }
 
+.custom-table tbody tr.selected-row,
 .custom-table tbody tr.selected {
-  background: #dcfce7;
+  background: #fef3c7 !important;
+  border-left: 4px solid #ea580c;
   font-weight: 600;
 }
 

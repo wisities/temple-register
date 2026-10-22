@@ -42,6 +42,7 @@ document.addEventListener("DOMContentLoaded", () => {
     testGasConnection(true).then(connected => {
       if (connected) {
         fetchLiveDataFromSheet();
+        initRealtimeSync();
       }
     });
   }
@@ -1103,11 +1104,101 @@ async function testGasConnection(silent = false) {
   }
 }
 
+// Realtime Sync Controller Variables
+let realtimeSyncInterval = 6; // ซิงก์อัตโนมัติทุก 6 วินาที
+let realtimeCountdown = 6;
+let realtimeCountdownTimer = null;
+let isRealtimeSyncing = false;
+
+function initRealtimeSync() {
+  const chk = document.getElementById("chkRealtimeSync");
+  if (chk) {
+    chk.addEventListener("change", (e) => {
+      if (e.target.checked) {
+        startRealtimeSync();
+        showToast("เปิดระบบซิงก์ข้อมูลเรียลไทม์อัตโนมัติแล้ว", "info");
+      } else {
+        stopRealtimeSync();
+        const countdownEl = document.getElementById("realtimeCountdown");
+        if (countdownEl) countdownEl.textContent = "หยุดชั่วคราว";
+        showToast("หยุดซิงก์เรียลไทม์ชั่วคราว", "warning");
+      }
+    });
+  }
+
+  // ซิงก์ทันทีเมื่อผู้ใช้สลับกลับมาที่หน้าต่างนี้ (Tab Focus / Visibility Change)
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && state.gasUrl) {
+      triggerImmediateSync(false);
+    }
+  });
+
+  window.addEventListener("focus", () => {
+    if (state.gasUrl) {
+      triggerImmediateSync(false);
+    }
+  });
+
+  startRealtimeSync();
+}
+
+function startRealtimeSync() {
+  stopRealtimeSync();
+  realtimeCountdown = realtimeSyncInterval;
+  updateCountdownUI();
+
+  realtimeCountdownTimer = setInterval(() => {
+    const chk = document.getElementById("chkRealtimeSync");
+    if (chk && !chk.checked) return;
+
+    realtimeCountdown--;
+    if (realtimeCountdown <= 0) {
+      realtimeCountdown = realtimeSyncInterval;
+      updateCountdownUI();
+      if (!isRealtimeSyncing && state.gasUrl) {
+        fetchLiveDataFromSheet(false);
+      }
+    } else {
+      updateCountdownUI();
+    }
+  }, 1000);
+}
+
+function stopRealtimeSync() {
+  if (realtimeCountdownTimer) {
+    clearInterval(realtimeCountdownTimer);
+    realtimeCountdownTimer = null;
+  }
+}
+
+function updateCountdownUI() {
+  const el = document.getElementById("realtimeCountdown");
+  if (el) {
+    if (isRealtimeSyncing) {
+      el.textContent = "กำลังซิงก์...";
+      el.style.color = "#d97706";
+    } else {
+      el.textContent = `รอ ${realtimeCountdown} วิ`;
+      el.style.color = "#2563eb";
+    }
+  }
+}
+
+window.triggerImmediateSync = function(showFeedback = true) {
+  realtimeCountdown = realtimeSyncInterval;
+  updateCountdownUI();
+  return fetchLiveDataFromSheet(showFeedback);
+};
+
 /**
  * ดึงข้อมูลสดล่าสุดจาก Google Sheet ทั้ง 4 แผ่นงาน
  */
 async function fetchLiveDataFromSheet(notify = false) {
   if (!state.gasUrl) return;
+  if (isRealtimeSyncing) return;
+  isRealtimeSyncing = true;
+  updateCountdownUI();
+
   if (notify) showToast("กำลังดึงข้อมูลล่าสุดจาก Google Sheets...", "info");
 
   try {
@@ -1202,11 +1293,22 @@ async function fetchLiveDataFromSheet(notify = false) {
       renderSlipMonksTable();
       renderReportTable();
 
+      // บันทึกเวลาซิงก์ล่าสุด
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('th-TH', { hour12: false });
+      const lastSyncedEl = document.getElementById("lastSyncedTime");
+      if (lastSyncedEl) lastSyncedEl.textContent = `(ซิงก์ล่าสุด: ${timeStr})`;
+
+      updateGasStatusUI(true, `เชื่อมต่อ Google Sheet เรียลไทม์ (${timeStr})`);
+
       if (notify) showToast("ซิงก์ข้อมูลตรงกับ Google Sheets เรียบร้อยแล้ว", "success");
     }
   } catch (err) {
     console.warn("Could not fetch live data from Google Sheet:", err);
     if (notify) showToast("ไม่สามารถซิงก์ข้อมูลได้ กรุณาลองใหม่อีกครั้ง", "error");
+  } finally {
+    isRealtimeSyncing = false;
+    updateCountdownUI();
   }
 }
 

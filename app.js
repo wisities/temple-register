@@ -1106,20 +1106,24 @@ async function testGasConnection(silent = false) {
 /**
  * ดึงข้อมูลสดล่าสุดจาก Google Sheet ทั้ง 4 แผ่นงาน
  */
-async function fetchLiveDataFromSheet() {
+async function fetchLiveDataFromSheet(notify = false) {
   if (!state.gasUrl) return;
+  if (notify) showToast("กำลังดึงข้อมูลล่าสุดจาก Google Sheets...", "info");
+
   try {
     const testUrl = state.gasUrl.includes("?") ? `${state.gasUrl}&action=get_all_data` : `${state.gasUrl}?action=get_all_data`;
     const res = await fetch(testUrl, { method: "GET", mode: "cors" });
     const json = await res.json();
     if (json && json.status === "success") {
+      // 1. พระสงฆ์ที่นิมนต์
       if (json.monks && json.monks.length > 0) {
-        // ตรวจสอบว่าข้อมูลใน Google Sheet ไม่ใช่เครื่องหมายคำถาม ?????
         const sampleName = json.monks[0]["ชื่อ / ฉายา"] || json.monks[0].name || "";
         if (!sampleName.includes("???")) {
           state.monks = json.monks.map((m, idx) => {
             const monkNum = parseInt((m.id || m["รหัส"] || "").replace("MK", "")) || (idx + 1);
             const realPhoto = `assets/monks/monk_row_${monkNum + 1}.jpg`;
+            const st = (m["สถานะลงทะเบียน"] || m.status || "").trim();
+            const sl = (m["สถานะรับใบปวารณา"] || m.slipStatus || "").trim();
             return {
               id: m["รหัส"] || m.id,
               idCard: m["เลขบัตรประชาชน"] ? m["เลขบัตรประชาชน"].toString() : (m.idCard || ""),
@@ -1134,19 +1138,18 @@ async function fetchLiveDataFromSheet() {
               hotel: m["ที่พัก / โรงแรม"] || m.hotel || "",
               allowSlip: m["สิทธิ์รับใบปวารณา"] === "มีสิทธิ์" || m.allowSlip === true,
               amount: m["จำนวนปัจจัย"] || m.amount || 5000,
-              status: m["สถานะลงทะเบียน"] || m.status || "ยังไม่ลงทะเบียน",
-              slipStatus: m["สถานะรับใบปวารณา"] || m.slipStatus || "ยังไม่ได้รับ",
-              registeredAt: m["เวลาที่ลงทะเบียน"] || m.registeredAt || ""
+              status: (st === "ลงทะเบียนแล้ว") ? "ลงทะเบียนแล้ว" : "ยังไม่ลงทะเบียน",
+              slipStatus: (sl === "รับแล้ว") ? "รับแล้ว" : "ยังไม่ได้รับ",
+              registeredAt: (st === "ลงทะเบียนแล้ว") ? (m["เวลาที่ลงทะเบียน"] || m.registeredAt || "") : ""
             };
           });
           saveLocal("TEMPLE_MONKS_DATA", state.monks);
           populateMonkQuickSelect();
-        } else {
-          console.warn("ข้อมูลใน Google Sheet ยังเป็น ????? ข้ามการอัปเดตทับเพื่อรักษาภาษาไทยที่ถูกต้องในเว็บ");
         }
       }
 
-      if (json.walkinMonks && json.walkinMonks.length > 0) {
+      // 2. พระนอกรายชื่อ (หากชีตว่าง ให้ล้างข้อมูลในเครื่องให้ตรงกัน)
+      if (Array.isArray(json.walkinMonks)) {
         state.walkinMonks = json.walkinMonks.map(w => ({
           id: w["รหัส"] || w.id,
           idCard: w["เลขบัตรประชาชน"] || w.idCard,
@@ -1161,7 +1164,8 @@ async function fetchLiveDataFromSheet() {
         saveLocal("TEMPLE_WALKIN_DATA", state.walkinMonks);
       }
 
-      if (json.laypeople && json.laypeople.length > 0) {
+      // 3. ญาติโยม (หากชีตว่าง ให้ล้างข้อมูลในเครื่องให้ตรงกัน)
+      if (Array.isArray(json.laypeople)) {
         state.laypeople = json.laypeople.map(l => ({
           id: l["รหัส"] || l.id,
           idCard: l["เลขบัตรประชาชน"] || l.idCard,
@@ -1176,7 +1180,8 @@ async function fetchLiveDataFromSheet() {
         saveLocal("TEMPLE_LAY_DATA", state.laypeople);
       }
 
-      if (json.slips && json.slips.length > 0) {
+      // 4. ใบปวารณา (หากชีตว่าง ให้ล้างข้อมูลในเครื่องให้ตรงกัน)
+      if (Array.isArray(json.slips)) {
         state.slips = json.slips.map(s => ({
           txId: s["รหัสบันทึก"] || s.txId,
           monkId: s["รหัสพระ"] || s.monkId,
@@ -1196,11 +1201,52 @@ async function fetchLiveDataFromSheet() {
       updateAllKpis();
       renderSlipMonksTable();
       renderReportTable();
+
+      if (notify) showToast("ซิงก์ข้อมูลตรงกับ Google Sheets เรียบร้อยแล้ว", "success");
     }
   } catch (err) {
     console.warn("Could not fetch live data from Google Sheet:", err);
+    if (notify) showToast("ไม่สามารถซิงก์ข้อมูลได้ กรุณาลองใหม่อีกครั้ง", "error");
   }
 }
+
+/**
+ * ล้างข้อมูลและรีเซ็ตสถานะการลงทะเบียนทั้งหมดในระบบ
+ */
+window.resetAllRegistrations = function() {
+  const ans = confirm("ต้องการล้างข้อมูลและสถานะการลงทะเบียนทั้งหมดในระบบหรือไม่?\n\n- สถานะพระสงฆ์จะกลับเป็น 'ยังไม่ลงทะเบียน'\n- รายชื่อพระนอกรายชื่อ, ญาติโยม, และรายการรับใบปวารณาจะถูกล้างออก");
+  if (!ans) return;
+
+  const initialList = window.INITIAL_MONKS_DATA || [];
+  state.monks = initialList.map(im => {
+    const monkNum = parseInt(im.id.replace("MK", "")) || 1;
+    return {
+      ...im,
+      photo: `assets/monks/monk_row_${monkNum + 1}.jpg`,
+      status: "ยังไม่ลงทะเบียน",
+      slipStatus: "ยังไม่ได้รับ",
+      registeredAt: null,
+      receivedBy: null,
+      receiverPhoto: null
+    };
+  });
+  saveLocal("TEMPLE_MONKS_DATA", state.monks);
+
+  state.walkinMonks = [];
+  saveLocal("TEMPLE_WALKIN_DATA", []);
+
+  state.laypeople = [];
+  saveLocal("TEMPLE_LAY_DATA", []);
+
+  state.slips = [];
+  saveLocal("TEMPLE_SLIPS_DATA", []);
+
+  updateAllKpis();
+  renderSlipMonksTable();
+  renderReportTable();
+  populateMonkQuickSelect();
+  showToast("ล้างข้อมูลและรีเซ็ตสถานะทั้งหมดเรียบร้อยแล้ว แดชบอร์ดเป็น 0", "success");
+};
 
 function updateGasStatusUI(connected, text) {
   const pill = document.getElementById("gsheetStatusPill");

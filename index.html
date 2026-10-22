@@ -595,7 +595,13 @@
             <p>ตรวจสอบและติดตามสถานะการลงทะเบียนและการเบิกจ่ายปัจจัยแบบเรียลไทม์</p>
           </div>
         </div>
-        <div class="banner-right" style="display: flex; gap: 0.5rem;">
+        <div class="banner-right" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="fetchLiveDataFromSheet(true)">
+            🔄 ซิงก์ข้อมูลจากชีต
+          </button>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="resetAllRegistrations()" style="color: #dc2626; border-color: #fca5a5;">
+            🗑️ ล้างสถานะลงทะเบียนทั้งหมด
+          </button>
           <button type="button" class="btn btn-secondary btn-sm" onclick="exportDataToCsv()">
             📥 ส่งออก CSV (Excel)
           </button>

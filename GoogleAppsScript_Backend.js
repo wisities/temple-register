@@ -314,7 +314,7 @@ function registerMonk(ss, data) {
 }
 
 /**
- * ลงทะเบียนพระนอกรายชื่อ
+ * ลงทะเบียนพระนอกรายชื่อ (กำหนดให้เลขบัตรประชาชนเป็น Primary Key ห้ามซ้ำ)
  */
 function registerWalkinMonk(ss, data) {
   let sheet = ss.getSheetByName(SHEET_NAMES.WALKIN_MONKS);
@@ -326,9 +326,78 @@ function registerWalkinMonk(ss, data) {
   const now = Utilities.formatDate(new Date(), "Asia/Bangkok", "yyyy-MM-dd HH:mm:ss");
   const newId = "WK" + Utilities.formatDate(new Date(), "Asia/Bangkok", "yyyyMMdd-HHmmss");
 
-  const row = [
+  const cleanId = String(data.idCard || "").replace(/[-\s]/g, "").trim();
+  const searchName = String(data.name || "").trim().toLowerCase();
+  const searchTemple = String(data.temple || "").trim().toLowerCase();
+
+  const dataRange = sheet.getDataRange();
+  const values = dataRange.getValues();
+  const matchingRowIndices = [];
+
+  // ตรวจสอบเลขบัตรประชาชนในคอลัมน์ B (Index 1) และรหัสในคอลัมน์ A (Index 0)
+  for (let i = 1; i < values.length; i++) {
+    const rowId = String(values[i][0] || "").trim();
+    const rowCard = String(values[i][1] || "").replace(/[-\s]/g, "").trim();
+    const rowName = String(values[i][2] || "").trim().toLowerCase();
+    const rowTemple = String(values[i][3] || "").trim().toLowerCase();
+
+    // 1. ตรงตามเลขบัตรประชาชน 13 หลัก (Primary Key)
+    if (cleanId && cleanId.length >= 10 && !cleanId.includes("x") && rowCard === cleanId) {
+      matchingRowIndices.push(i + 1); // 1-indexed row number
+    }
+    // 2. หรือตรงตามรหัส WK ที่ระบุมา
+    else if (data.id && rowId && rowId === String(data.id).trim()) {
+      matchingRowIndices.push(i + 1);
+    }
+    // 3. หรือกรณีชื่อและวัดตรงกันแต่แถวเดิมเคยบันทึกเป็น placeholder จำลอง
+    else if (searchName && searchTemple && rowName === searchName && rowTemple === searchTemple && (rowCard.includes("x") || !rowCard)) {
+      matchingRowIndices.push(i + 1);
+    }
+  }
+
+  if (matchingRowIndices.length > 0) {
+    // พบข้อมูลเดิม -> ทำการ UPDATE แถวแรกที่พบ
+    const primaryRowIndex = matchingRowIndices[0];
+    const existingId = values[primaryRowIndex - 1][0] || data.id || newId;
+
+    const updatedRow = [
+      existingId,
+      data.idCard || cleanId,
+      data.name || "",
+      data.temple || "",
+      data.vassa || 0,
+      data.province || "",
+      data.phone || "",
+      "ลงทะเบียนแล้ว",
+      now
+    ];
+
+    sheet.getRange(primaryRowIndex, 1, 1, updatedRow.length).setValues([updatedRow]);
+
+    // หากมีแถวซ้ำซ้อนเดิมที่เคยบันทึกไว้เกิน 1 แถว ให้ลบแถวซ้ำออก (ลบจากล่างขึ้นบน)
+    if (matchingRowIndices.length > 1) {
+      for (let d = matchingRowIndices.length - 1; d >= 1; d--) {
+        try {
+          sheet.deleteRow(matchingRowIndices[d]);
+        } catch (delErr) {
+          console.warn("Error deleting duplicate row:", delErr);
+        }
+      }
+    }
+
+    return {
+      status: "success",
+      isUpdate: true,
+      id: existingId,
+      message: "อัปเดตข้อมูลพระนอกรายชื่อสำเร็จ (เลขบัตรประชาชนมีในระบบแล้ว)",
+      registeredAt: now
+    };
+  }
+
+  // ไม่พบข้อมูลเดิม -> เพิ่มแถวใหม่ (INSERT)
+  const newRow = [
     data.id || newId,
-    data.idCard || "",
+    data.idCard || cleanId,
     data.name || "",
     data.temple || "",
     data.vassa || 0,
@@ -338,8 +407,14 @@ function registerWalkinMonk(ss, data) {
     now
   ];
 
-  sheet.appendRow(row);
-  return { status: "success", id: data.id || newId, message: "บันทึกพระนอกรายชื่อสำเร็จ", registeredAt: now };
+  sheet.appendRow(newRow);
+  return {
+    status: "success",
+    isUpdate: false,
+    id: data.id || newId,
+    message: "บันทึกพระนอกรายชื่อสำเร็จ",
+    registeredAt: now
+  };
 }
 
 /**

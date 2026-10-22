@@ -17,6 +17,7 @@ const state = {
   slips: [],
   currentSelectedMonk: null,
   currentSlipMonk: null,
+  editingWalkinId: null,
   webcamStream: null,
   receiverPhotoBase64: "",
   activeReportTab: "monks"
@@ -334,6 +335,46 @@ function setupMonkWorkflow() {
     });
   }
 
+  // Live validation on Walkin Citizen ID input (Primary Key)
+  const inputWalkinId = document.getElementById("walkinIdCard");
+  if (inputWalkinId) {
+    inputWalkinId.addEventListener("input", () => {
+      const val = inputWalkinId.value.trim();
+      const cleanVal = val.replace(/[-\s]/g, "");
+      if (cleanVal.length >= 10 && !cleanVal.includes("x")) {
+        // เช็คกับพระสงฆ์ที่นิมนต์
+        const monkInvited = state.monks.find(m => (m.idCard || "").replace(/[-\s]/g, "") === cleanVal);
+        if (monkInvited) {
+          showToast(`⚠️ เลขบัตรประชาชนนี้อยู่ในรายนาม 'พระสงฆ์ที่นิมนต์' แล้ว: ${monkInvited.name}`, "warning");
+          displayInvitedMonk(monkInvited, true);
+          return;
+        }
+
+        // เช็คกับพระนอกรายชื่อเดิม
+        const existing = state.walkinMonks.find(w => (w.idCard || "").replace(/[-\s]/g, "") === cleanVal);
+        if (existing) {
+          state.editingWalkinId = existing.id;
+          displayWalkinMonkForm(val);
+          showToast(`✓ พบข้อมูลเดิมในระบบ: ${existing.name} วัด ${existing.temple} (สถานะ: อัปเดตข้อมูล)`, "info");
+        } else {
+          state.editingWalkinId = null;
+          const badgeStatus = document.getElementById("walkinIdStatusBadge");
+          if (badgeStatus) {
+            badgeStatus.style.display = "inline-block";
+            badgeStatus.style.background = "#ecfdf5";
+            badgeStatus.style.color = "#065f46";
+            badgeStatus.textContent = "✓ เลขบัตรใหม่ (ยังไม่เคยลงทะเบียน)";
+          }
+          const btnSave = document.getElementById("btnSaveWalkinMonk");
+          if (btnSave) {
+            btnSave.textContent = "💾 บันทึกและลงทะเบียน";
+            btnSave.style.background = "";
+          }
+        }
+      }
+    });
+  }
+
   // Initial render of table
   renderMonkSelectTable();
 }
@@ -642,16 +683,109 @@ function confirmMonkRegistration(monk) {
 
 function displayWalkinMonkForm(searchCard) {
   state.currentSelectedMonk = null;
-  document.getElementById("monkDetailHeader").textContent = "1.4 ลงทะเบียนพระ (กรณีไม่ได้รับเชิญ)";
-  document.getElementById("monkDetailSubheader").className = "status-badge pending";
-  document.getElementById("monkDetailSubheader").textContent = "พระนอกรายชื่อ";
+  const cleanSearch = (searchCard || "").toString().replace(/[-\s]/g, "").trim();
 
-  document.getElementById("walkinIdCard").value = (searchCard && searchCard.length > 5) ? searchCard : "";
-  document.getElementById("walkinName").value = "";
-  document.getElementById("walkinVassa").value = "";
-  document.getElementById("walkinTemple").value = "";
-  document.getElementById("walkinProvince").value = "";
-  document.getElementById("walkinPhone").value = "";
+  // ตรวจสอบก่อนว่าเลขบัตรนี้เป็นพระที่ได้รับนิมนต์ในแท็บ 1.3 หรือไม่
+  if (cleanSearch && cleanSearch.length >= 10 && !cleanSearch.includes("x")) {
+    const monkInvited = state.monks.find(m => {
+      const mCard = (m.idCard || "").toString().replace(/[-\s]/g, "").trim();
+      return mCard === cleanSearch;
+    });
+    if (monkInvited) {
+      showToast(`⚠️ เลขบัตรประชาชนนี้อยู่ในรายนาม 'พระสงฆ์ที่นิมนต์' แล้ว: ${monkInvited.name}`, "warning");
+      displayInvitedMonk(monkInvited, true);
+      return;
+    }
+  }
+
+  // ตรวจสอบว่าเคยลงทะเบียนในพระนอกรายชื่อแล้วหรือไม่ (เลขบัตรเป็น Primary Key ห้ามซ้ำ)
+  let existing = null;
+  if (cleanSearch && cleanSearch.length >= 10 && !cleanSearch.includes("x")) {
+    existing = state.walkinMonks.find(w => {
+      const wCard = (w.idCard || "").toString().replace(/[-\s]/g, "").trim();
+      return wCard === cleanSearch;
+    });
+  }
+
+  const idCardInput = document.getElementById("walkinIdCard");
+  const nameInput = document.getElementById("walkinName");
+  const vassaInput = document.getElementById("walkinVassa");
+  const templeInput = document.getElementById("walkinTemple");
+  const provinceInput = document.getElementById("walkinProvince");
+  const phoneInput = document.getElementById("walkinPhone");
+  const headerElem = document.getElementById("monkDetailHeader");
+  const subheaderElem = document.getElementById("monkDetailSubheader");
+  const btnSave = document.getElementById("btnSaveWalkinMonk");
+  const bannerBox = document.getElementById("walkinBannerBox");
+  const bannerTitle = document.getElementById("walkinBannerTitle");
+  const bannerDesc = document.getElementById("walkinBannerDesc");
+  const badgeStatus = document.getElementById("walkinIdStatusBadge");
+
+  if (existing) {
+    // พบข้อมูลเดิม -> แสดงสถานะพร้อมอัปเดตข้อมูล (Upsert / Update Mode)
+    state.editingWalkinId = existing.id;
+    headerElem.textContent = "1.4 ข้อมูลพระนอกรายชื่อ (เคยลงทะเบียนแล้ว)";
+    subheaderElem.className = "status-badge registered";
+    subheaderElem.textContent = "✓ ลงทะเบียนแล้ว (อัปเดตข้อมูล)";
+
+    if (bannerBox) bannerBox.style.background = "#eff6ff";
+    if (bannerBox) bannerBox.style.borderLeftColor = "#3b82f6";
+    if (bannerTitle) bannerTitle.textContent = "1.4 ตรวจพบข้อมูลพระนอกรายชื่อเดิม";
+    if (bannerDesc) bannerDesc.textContent = `เลขประจำตัวประชาชนนี้เคยลงทะเบียนแล้วเมื่อ ${existing.registeredAt || '-'} (รหัส ${existing.id}) ระบบจะอัปเดตข้อมูลเดิม`;
+
+    if (badgeStatus) {
+      badgeStatus.style.display = "inline-block";
+      badgeStatus.style.background = "#dbeafe";
+      badgeStatus.style.color = "#1e40af";
+      badgeStatus.textContent = "✓ เลขบัตรเดิม (Update Mode)";
+    }
+
+    if (idCardInput) idCardInput.value = existing.idCard || searchCard;
+    if (nameInput) nameInput.value = existing.name || "";
+    if (vassaInput) vassaInput.value = existing.vassa || "";
+    if (templeInput) templeInput.value = existing.temple || "";
+    if (provinceInput) provinceInput.value = existing.province || "";
+    if (phoneInput) phoneInput.value = existing.phone || "";
+
+    if (btnSave) {
+      btnSave.textContent = "💾 บันทึกอัปเดตข้อมูล (เลขบัตรนี้ลงทะเบียนแล้ว)";
+      btnSave.style.background = "#0284c7";
+    }
+  } else {
+    // ไม่พบข้อมูลเดิม -> ฟอร์มสำหรับลงทะเบียนใหม่ (Insert Mode)
+    state.editingWalkinId = null;
+    headerElem.textContent = "1.4 ลงทะเบียนพระ (กรณีไม่ได้รับเชิญ)";
+    subheaderElem.className = "status-badge pending";
+    subheaderElem.textContent = "พระนอกรายชื่อ (ใหม่)";
+
+    if (bannerBox) bannerBox.style.background = "#fff7ed";
+    if (bannerBox) bannerBox.style.borderLeftColor = "#ea580c";
+    if (bannerTitle) bannerTitle.textContent = "1.4 ลงทะเบียนพระ (กรณีไม่ได้รับเชิญ)";
+    if (bannerDesc) bannerDesc.textContent = "ไม่พบในรายชื่อนิมนต์ กรุณากรอกเลขบัตรประชาชน 13 หลักและข้อมูลเพื่อบันทึกลงระบบ";
+
+    if (badgeStatus) {
+      if (cleanSearch && cleanSearch.length >= 10 && !cleanSearch.includes("x")) {
+        badgeStatus.style.display = "inline-block";
+        badgeStatus.style.background = "#ecfdf5";
+        badgeStatus.style.color = "#065f46";
+        badgeStatus.textContent = "✓ เลขบัตรใหม่ (ยังไม่เคยลงทะเบียน)";
+      } else {
+        badgeStatus.style.display = "none";
+      }
+    }
+
+    if (idCardInput) idCardInput.value = (cleanSearch && !cleanSearch.includes("x")) ? searchCard : "";
+    if (nameInput) nameInput.value = "";
+    if (vassaInput) vassaInput.value = "";
+    if (templeInput) templeInput.value = "";
+    if (provinceInput) provinceInput.value = "";
+    if (phoneInput) phoneInput.value = "";
+
+    if (btnSave) {
+      btnSave.textContent = "💾 บันทึกและลงทะเบียน";
+      btnSave.style.background = "";
+    }
+  }
 
   document.getElementById("monkDetailPlaceholder").style.display = "none";
   document.getElementById("monkInvitedForm").style.display = "none";
@@ -661,52 +795,130 @@ function displayWalkinMonkForm(searchCard) {
 function saveWalkinMonk() {
   const name = document.getElementById("walkinName").value.trim();
   const idCard = document.getElementById("walkinIdCard").value.trim();
+  const cleanId = idCard.replace(/[-\s]/g, "").trim();
   const vassa = parseInt(document.getElementById("walkinVassa").value) || 0;
   const temple = document.getElementById("walkinTemple").value.trim();
   const province = document.getElementById("walkinProvince").value.trim();
   const phone = document.getElementById("walkinPhone").value.trim();
 
+  // 1. ตรวจสอบเลขประจำตัวประชาชน (Primary Key ห้ามเว้นว่าง และห้ามเป็น dummy)
+  if (!cleanId || cleanId.length < 13 || cleanId.includes("x")) {
+    showToast("กรุณาระบุเลขประจำตัวประชาชน 13 หลักให้ถูกต้อง (เลขบัตรเป็น Primary Key ห้ามเว้นว่างหรือซ้ำ)", "warning");
+    const inputCard = document.getElementById("walkinIdCard");
+    if (inputCard) inputCard.focus();
+    return;
+  }
+
   if (!name || !temple) {
-    showToast("กรุณากรอกชื่อพระ/ฉายา และชื่อวัดต้นสังกัด", "warning");
+    showToast("กรุณากรอกชื่อพระ/ฉายา และชื่อวัดต้นสังกัดให้ครบถ้วน", "warning");
+    return;
+  }
+
+  // 2. ตรวจสอบว่ามีอยู่ในรายนามพระสงฆ์ที่นิมนต์หรือไม่
+  const monkInvited = state.monks.find(m => {
+    const mCard = (m.idCard || "").toString().replace(/[-\s]/g, "").trim();
+    return mCard === cleanId;
+  });
+  if (monkInvited) {
+    showToast(`⚠️ เลขบัตรประชาชนนี้อยู่ในรายนาม 'พระสงฆ์ที่นิมนต์' แล้ว: ${monkInvited.name}`, "warning");
+    displayInvitedMonk(monkInvited, true);
     return;
   }
 
   const now = new Date().toLocaleString("th-TH");
-  const newMonk = {
-    id: "WK" + Date.now().toString().slice(-6),
-    idCard: idCard || "1-xxxx-xxxxx-xx-x",
-    name: name,
-    temple: temple,
-    vassa: vassa,
-    province: province || "ไม่ระบุ",
-    phone: phone || "-",
-    status: "ลงทะเบียนแล้ว",
-    registeredAt: now
-  };
 
-  state.walkinMonks.unshift(newMonk);
-  saveLocal("TEMPLE_WALKIN_DATA", state.walkinMonks);
-  updateAllKpis();
-  renderReportTable();
+  // 3. ตรวจสอบว่ามีอยู่ใน 'ลงทะเบียนพระนอกรายชื่อ' แล้วหรือไม่ (เช็ค Primary Key)
+  const existingIndex = state.walkinMonks.findIndex(w => {
+    const wCard = (w.idCard || "").toString().replace(/[-\s]/g, "").trim();
+    return (wCard && wCard === cleanId) || (state.editingWalkinId && w.id === state.editingWalkinId);
+  });
 
-  showToast(`บันทึกและลงทะเบียนพระนอกรายชื่อ: ${name} สำเร็จ`, "success");
-  resetMonkWorkflow();
+  if (existingIndex !== -1) {
+    // === UPDATE EXISTING (อัปเดตข้อมูลแถวเดิม ไม่สร้างแถวใหม่) ===
+    const existing = state.walkinMonks[existingIndex];
+    existing.idCard = idCard;
+    existing.name = name;
+    existing.temple = temple;
+    existing.vassa = vassa;
+    existing.province = province || "ไม่ระบุ";
+    existing.phone = phone || "-";
+    existing.status = "ลงทะเบียนแล้ว";
+    existing.registeredAt = now;
 
-  // Send to Google Sheets
-  if (state.gasUrl) {
-    callGasApi({
-      action: "register_walkin_monk",
-      ...newMonk
-    }).then(res => {
-      if (res && res.status === "success") {
-        showToast("บันทึกลง Google Sheet แผ่น 'ลงทะเบียนพระนอกรายชื่อ' สำเร็จ", "success");
-      }
+    // เผื่อมีแถวซ้ำซ้อนเดิมใน memory ให้กรองให้เหลือเพียงแถวเดียว
+    state.walkinMonks = state.walkinMonks.filter((w, idx) => {
+      if (idx === existingIndex) return true;
+      const otherCard = (w.idCard || "").toString().replace(/[-\s]/g, "").trim();
+      return otherCard !== cleanId;
     });
+
+    saveLocal("TEMPLE_WALKIN_DATA", state.walkinMonks);
+    updateAllKpis();
+    renderReportTable();
+
+    showToast(`✓ อัปเดตข้อมูลพระนอกรายชื่อ: ${name} (เลขบัตร: ${idCard}) เรียบร้อยแล้ว`, "success");
+    resetMonkWorkflow();
+
+    if (state.gasUrl) {
+      callGasApi({
+        action: "register_walkin_monk",
+        id: existing.id,
+        idCard: cleanId,
+        name: name,
+        temple: temple,
+        vassa: vassa,
+        province: province || "ไม่ระบุ",
+        phone: phone || "-",
+        isUpdate: true,
+        registeredAt: now
+      }).then(res => {
+        if (res && res.status === "success") {
+          showToast("อัปเดตข้อมูลลง Google Sheet เรียบร้อยแล้ว (ไม่เพิ่มแถวซ้ำ)", "success");
+        }
+      });
+    }
+
+  } else {
+    // === INSERT NEW (เพิ่มแถวใหม่เฉพาะเมื่อเป็นเลขบัตรใหม่) ===
+    const newMonk = {
+      id: "WK" + Date.now().toString().slice(-6),
+      idCard: idCard,
+      name: name,
+      temple: temple,
+      vassa: vassa,
+      province: province || "ไม่ระบุ",
+      phone: phone || "-",
+      status: "ลงทะเบียนแล้ว",
+      registeredAt: now
+    };
+
+    state.walkinMonks.unshift(newMonk);
+    saveLocal("TEMPLE_WALKIN_DATA", state.walkinMonks);
+    updateAllKpis();
+    renderReportTable();
+
+    showToast(`✓ บันทึกและลงทะเบียนพระนอกรายชื่อ: ${name} สำเร็จ`, "success");
+    resetMonkWorkflow();
+
+    if (state.gasUrl) {
+      callGasApi({
+        action: "register_walkin_monk",
+        ...newMonk,
+        idCard: cleanId,
+        isUpdate: false
+      }).then(res => {
+        if (res && res.status === "success") {
+          showToast("บันทึกลง Google Sheet แผ่น 'ลงทะเบียนพระนอกรายชื่อ' สำเร็จ", "success");
+        }
+      });
+    }
   }
 }
 
 function resetMonkWorkflow() {
   state.currentSelectedMonk = null;
+  state.editingWalkinId = null;
+
   const inputCard = document.getElementById("monkIdCardInput");
   if (inputCard) inputCard.value = "";
   const cardInd = document.getElementById("cardStatusIndicator");
@@ -719,6 +931,26 @@ function resetMonkWorkflow() {
   if (invitedForm) invitedForm.style.display = "none";
   const walkinForm = document.getElementById("monkWalkinForm");
   if (walkinForm) walkinForm.style.display = "none";
+
+  const bannerBox = document.getElementById("walkinBannerBox");
+  if (bannerBox) {
+    bannerBox.style.background = "#fff7ed";
+    bannerBox.style.borderLeftColor = "#ea580c";
+  }
+  const bannerTitle = document.getElementById("walkinBannerTitle");
+  if (bannerTitle) bannerTitle.textContent = "1.4 ลงทะเบียนพระ (กรณีไม่ได้รับเชิญ)";
+  const bannerDesc = document.getElementById("walkinBannerDesc");
+  if (bannerDesc) bannerDesc.textContent = "ไม่พบในรายชื่อนิมนต์ กรุณากรอกเลขบัตรประชาชน 13 หลักและข้อมูลเพื่อบันทึกลงระบบ";
+
+  const badgeStatus = document.getElementById("walkinIdStatusBadge");
+  if (badgeStatus) badgeStatus.style.display = "none";
+
+  const btnSave = document.getElementById("btnSaveWalkinMonk");
+  if (btnSave) {
+    btnSave.textContent = "💾 บันทึกและลงทะเบียน";
+    btnSave.style.background = "";
+  }
+
   const header = document.getElementById("monkDetailHeader");
   if (header) header.textContent = "1.3 ข้อมูลการลงทะเบียนพระสงฆ์";
   const subheader = document.getElementById("monkDetailSubheader");
@@ -1536,19 +1768,40 @@ async function fetchLiveDataFromSheet(notify = false) {
         }
       }
 
-      // 2. พระนอกรายชื่อ (หากชีตว่าง ให้ล้างข้อมูลในเครื่องให้ตรงกัน)
+      // 2. พระนอกรายชื่อ (ดีดูพลิเคตโดยใช้เลขบัตรประชาชนเป็น Primary Key ห้ามซ้ำ)
       if (Array.isArray(json.walkinMonks)) {
-        state.walkinMonks = json.walkinMonks.map(w => ({
-          id: w["รหัส"] || w.id,
-          idCard: w["เลขบัตรประชาชน"] || w.idCard,
-          name: w["ชื่อ / ฉายา"] || w.name,
-          temple: w["ชื่อวัด"] || w.temple,
-          vassa: w["พรรษา"] || w.vassa,
-          province: w["จังหวัด"] || w.province,
-          phone: w["เบอร์โทรศัพท์"] || w.phone,
-          status: w["สถานะลงทะเบียน"] || "ลงทะเบียนแล้ว",
-          registeredAt: w["เวลาที่ลงทะเบียน"] || w.registeredAt
-        }));
+        const uniqueWalkins = [];
+        const seenCards = new Set();
+        const seenIds = new Set();
+
+        json.walkinMonks.forEach(w => {
+          const rawCard = (w["เลขบัตรประชาชน"] || w.idCard || "").toString();
+          const cleanCard = rawCard.replace(/[-\s]/g, "").trim();
+          const wId = (w["รหัส"] || w.id || "").toString().trim();
+
+          // ตรวจสอบความซ้ำซ้อนโดยยึดเลขบัตรประชาชนเป็น Primary Key
+          if (cleanCard && cleanCard.length >= 10 && !cleanCard.includes("x")) {
+            if (seenCards.has(cleanCard)) return; // ข้ามแถวที่เลขบัตรซ้ำ
+            seenCards.add(cleanCard);
+          } else if (wId) {
+            if (seenIds.has(wId)) return;
+            seenIds.add(wId);
+          }
+
+          uniqueWalkins.push({
+            id: wId,
+            idCard: rawCard,
+            name: w["ชื่อ / ฉายา"] || w.name,
+            temple: w["ชื่อวัด"] || w.temple,
+            vassa: w["พรรษา"] || w.vassa || 0,
+            province: w["จังหวัด"] || w.province || "ไม่ระบุ",
+            phone: w["เบอร์โทรศัพท์"] || w["เบอร์โทร"] || w.phone || "-",
+            status: w["สถานะลงทะเบียน"] || w["สถานะ"] || "ลงทะเบียนแล้ว",
+            registeredAt: w["เวลาที่ลงทะเบียน"] || w["เวลาลงทะเบียน"] || w.registeredAt || ""
+          });
+        });
+
+        state.walkinMonks = uniqueWalkins;
         saveLocal("TEMPLE_WALKIN_DATA", state.walkinMonks);
       }
 

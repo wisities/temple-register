@@ -283,8 +283,8 @@
 
             <!-- Form 1.4: พระกรณีไม่ได้รับเชิญ / นอกรายชื่อ -->
             <div id="monkWalkinForm" style="display: none;">
-              <div style="background: #fff7ed; border-left: 4px solid #ea580c; padding: 0.65rem 1rem; border-radius: 4px; margin-bottom: 1rem; font-size: 0.85rem; color: #9a3412;">
-                <strong>1.4 ลงทะเบียนพระ (กรณีไม่ได้รับเชิญ)</strong>: ไม่พบในรายชื่อนิมนต์ กรุณากรอกข้อมูลเพื่อบันทึกลงระบบ
+              <div id="walkinBannerBox" style="background: #fff7ed; border-left: 4px solid #ea580c; padding: 0.65rem 1rem; border-radius: 4px; margin-bottom: 1rem; font-size: 0.85rem; color: #9a3412;">
+                <strong id="walkinBannerTitle">1.4 ลงทะเบียนพระ (กรณีไม่ได้รับเชิญ)</strong>: <span id="walkinBannerDesc">ไม่พบในรายชื่อนิมนต์ กรุณากรอกข้อมูลเพื่อบันทึกลงระบบ</span>
               </div>
               <div class="monk-profile-wrapper">
                 <div class="profile-avatar-wrap">
@@ -293,11 +293,14 @@
                 <div class="profile-info-grid">
                   <div class="info-item full-width">
                     <label class="info-label">ชื่อ / ฉายา (ระบุสมณศักดิ์/ฉายา):</label>
-                    <input type="text" id="walkinName" class="input-control" placeholder="เช่น พระสมชาย อภิปุญโญ">
+                    <input type="text" id="walkinName" class="input-control" placeholder="เช่น พระวิเศษ สิทธิพงโส">
                   </div>
                   <div class="info-item">
-                    <label class="info-label">เลขบัตรประชาชน:</label>
-                    <input type="text" id="walkinIdCard" class="input-control" placeholder="1-xxxx-xxxxx-xx-x">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                      <label class="info-label" style="font-weight: 700; color: #92400e;">เลขบัตรประชาชน (Primary Key):</label>
+                      <span id="walkinIdStatusBadge" style="display: none; font-size: 0.72rem; padding: 0.1rem 0.4rem; border-radius: 999px;"></span>
+                    </div>
+                    <input type="text" id="walkinIdCard" class="input-control" placeholder="เลขประจำตัวประชาชน 13 หลัก" maxlength="20" style="font-weight: 600;">
                   </div>
                   <div class="info-item">
                     <label class="info-label">พรรษา:</label>

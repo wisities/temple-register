@@ -1278,38 +1278,22 @@ async function testGasConnection(silent = false) {
   }
 }
 
-// Realtime Sync Controller Variables
-let realtimeSyncInterval = 6; // ซิงก์อัตโนมัติทุก 6 วินาที
-let realtimeCountdown = 6;
+// Background Realtime Sync Engine (ทุก 6 วินาที อัตโนมัติเบื้องหลัง)
+let realtimeSyncInterval = 6;
 let realtimeCountdownTimer = null;
 let isRealtimeSyncing = false;
 
 function initRealtimeSync() {
-  const chk = document.getElementById("chkRealtimeSync");
-  if (chk) {
-    chk.addEventListener("change", (e) => {
-      if (e.target.checked) {
-        startRealtimeSync();
-        showToast("เปิดระบบซิงก์ข้อมูลเรียลไทม์อัตโนมัติแล้ว", "info");
-      } else {
-        stopRealtimeSync();
-        const countdownEl = document.getElementById("realtimeCountdown");
-        if (countdownEl) countdownEl.textContent = "หยุดชั่วคราว";
-        showToast("หยุดซิงก์เรียลไทม์ชั่วคราว", "warning");
-      }
-    });
-  }
-
   // ซิงก์ทันทีเมื่อผู้ใช้สลับกลับมาที่หน้าต่างนี้ (Tab Focus / Visibility Change)
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible" && state.gasUrl) {
-      triggerImmediateSync(false);
+    if (document.visibilityState === "visible" && state.gasUrl && !isRealtimeSyncing) {
+      fetchLiveDataFromSheet(false);
     }
   });
 
   window.addEventListener("focus", () => {
-    if (state.gasUrl) {
-      triggerImmediateSync(false);
+    if (state.gasUrl && !isRealtimeSyncing) {
+      fetchLiveDataFromSheet(false);
     }
   });
 
@@ -1318,24 +1302,11 @@ function initRealtimeSync() {
 
 function startRealtimeSync() {
   stopRealtimeSync();
-  realtimeCountdown = realtimeSyncInterval;
-  updateCountdownUI();
-
   realtimeCountdownTimer = setInterval(() => {
-    const chk = document.getElementById("chkRealtimeSync");
-    if (chk && !chk.checked) return;
-
-    realtimeCountdown--;
-    if (realtimeCountdown <= 0) {
-      realtimeCountdown = realtimeSyncInterval;
-      updateCountdownUI();
-      if (!isRealtimeSyncing && state.gasUrl) {
-        fetchLiveDataFromSheet(false);
-      }
-    } else {
-      updateCountdownUI();
+    if (!isRealtimeSyncing && state.gasUrl) {
+      fetchLiveDataFromSheet(false);
     }
-  }, 1000);
+  }, realtimeSyncInterval * 1000);
 }
 
 function stopRealtimeSync() {
@@ -1345,22 +1316,7 @@ function stopRealtimeSync() {
   }
 }
 
-function updateCountdownUI() {
-  const el = document.getElementById("realtimeCountdown");
-  if (el) {
-    if (isRealtimeSyncing) {
-      el.textContent = "กำลังซิงก์...";
-      el.style.color = "#d97706";
-    } else {
-      el.textContent = `รอ ${realtimeCountdown} วิ`;
-      el.style.color = "#2563eb";
-    }
-  }
-}
-
-window.triggerImmediateSync = function(showFeedback = true) {
-  realtimeCountdown = realtimeSyncInterval;
-  updateCountdownUI();
+window.triggerImmediateSync = function(showFeedback = false) {
   return fetchLiveDataFromSheet(showFeedback);
 };
 
@@ -1371,7 +1327,6 @@ async function fetchLiveDataFromSheet(notify = false) {
   if (!state.gasUrl) return;
   if (isRealtimeSyncing) return;
   isRealtimeSyncing = true;
-  updateCountdownUI();
 
   if (notify) showToast("กำลังดึงข้อมูลล่าสุดจาก Google Sheets...", "info");
 
@@ -1482,7 +1437,6 @@ async function fetchLiveDataFromSheet(notify = false) {
     if (notify) showToast("ไม่สามารถซิงก์ข้อมูลได้ กรุณาลองใหม่อีกครั้ง", "error");
   } finally {
     isRealtimeSyncing = false;
-    updateCountdownUI();
   }
 }
 

@@ -627,21 +627,6 @@
           </div>
         </div>
         <div class="banner-right" style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
-          <div style="display: flex; align-items: center; gap: 0.5rem; background: rgba(255,255,255,0.95); padding: 0.3rem 0.75rem; border-radius: 999px; border: 1px solid #cbd5e1; font-size: 0.8rem; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
-            <label style="display: flex; align-items: center; gap: 0.35rem; cursor: pointer; user-select: none; margin: 0; font-weight: 600; color: #166534;">
-              <input type="checkbox" id="chkRealtimeSync" checked style="accent-color: #16a34a; cursor: pointer;">
-              <span>⚡ ซิงก์เรียลไทม์สด</span>
-            </label>
-            <span style="color: #cbd5e1;">|</span>
-            <span id="realtimeCountdown" style="color: #2563eb; font-weight: 600; font-variant-numeric: tabular-nums;">รอ 6 วิ</span>
-            <span id="lastSyncedTime" style="color: #64748b; font-size: 0.75rem;">(ซิงก์ล่าสุด: -)</span>
-          </div>
-          <button type="button" class="btn btn-secondary btn-sm" onclick="triggerImmediateSync(true)">
-            🔄 ซิงก์ทันที
-          </button>
-          <button type="button" class="btn btn-secondary btn-sm" onclick="resetAllRegistrations()" style="color: #dc2626; border-color: #fca5a5;">
-            🗑️ ล้างสถานะลงทะเบียนทั้งหมด
-          </button>
           <button type="button" class="btn btn-secondary btn-sm" onclick="exportDataToCsv()">
             📥 ส่งออก CSV (Excel)
           </button>

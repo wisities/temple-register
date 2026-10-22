@@ -418,6 +418,45 @@ function registerWalkinMonk(ss, data) {
 }
 
 /**
+ * ฟังก์ชันสำหรับกด Run ใน Google Apps Script เพื่อลบแถวที่ซ้ำซ้อนในชีต 'ลงทะเบียนพระนอกรายชื่อ' ทันที
+ * โดยจะคงแถวแรกไว้ และลบแถวที่เลขบัตรหรือชื่อซ้ำด้านล่างออกทั้งหมด
+ */
+function cleanDuplicateWalkinMonks() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_NAMES.WALKIN_MONKS);
+  if (!sheet) return;
+
+  const values = sheet.getDataRange().getValues();
+  if (values.length <= 2) return;
+
+  const seenKeys = {};
+  const rowsToDelete = [];
+
+  for (let i = 1; i < values.length; i++) {
+    const rowNum = i + 1;
+    const card = String(values[i][1] || "").replace(/[-\s]/g, "").trim();
+    const name = String(values[i][2] || "").trim();
+
+    const key = (card && card.length >= 10 && !card.includes("x")) ? ("CARD:" + card) : ("NAME:" + name);
+
+    if (key && key !== "NAME:") {
+      if (seenKeys[key]) {
+        rowsToDelete.push(rowNum);
+      } else {
+        seenKeys[key] = rowNum;
+      }
+    }
+  }
+
+  // ลบแถวซ้ำจากล่างขึ้นบน
+  for (let d = rowsToDelete.length - 1; d >= 0; d--) {
+    sheet.deleteRow(rowsToDelete[d]);
+  }
+
+  Logger.log("ลบแถวที่ซ้ำซ้อนเรียบร้อยแล้ว: " + rowsToDelete.length + " แถว");
+}
+
+/**
  * ลงทะเบียนญาติโยม
  */
 function registerLayperson(ss, data) {

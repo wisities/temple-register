@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ระบบลงทะเบียนเข้างานวัด - ศรัทธาเชื่อมใจ เทคโนโลยีเชื่อมงานบุญ</title>
+  <!-- Google Fonts: Prompt & Sarabun -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Site Header -->
+  <header class="site-header">
+    <div class="header-container">
+      <div class="header-brand">
+        <!-- Golden Lotus SVG -->
+        <svg class="logo-lotus" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="lotusGold" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#fbbf24"/>
+              <stop offset="50%" stop-color="#d97706"/>
+              <stop offset="100%" stop-color="#92400e"/>
+            </linearGradient>
+            <linearGradient id="lotusGlow" x1="50%" y1="0%" x2="50%" y2="100%">
+              <stop offset="0%" stop-color="#fef08a"/>
+              <stop offset="100%" stop-color="#f59e0b"/>
+            </linearGradient>
+          </defs>
+          <!-- Center Petal -->
+          <path d="M50 10 C46 30 38 52 50 82 C62 52 54 30 50 10 Z" fill="url(#lotusGlow)" stroke="#b45309" stroke-width="1.5"/>
+          <!-- Inner Left Petal -->
+          <path d="M50 82 C30 75 22 45 36 28 C42 45 46 65 50 82 Z" fill="url(#lotusGold)" opacity="0.95"/>
+          <!-- Inner Right Petal -->
+          <path d="M50 82 C70 75 78 45 64 28 C58 45 54 65 50 82 Z" fill="url(#lotusGold)" opacity="0.95"/>
+          <!-- Outer Left Petal -->
+          <path d="M50 82 C16 78 10 54 22 42 C26 58 38 72 50 82 Z" fill="url(#lotusGold)" opacity="0.85"/>
+          <!-- Outer Right Petal -->
+          <path d="M50 82 C84 78 90 54 78 42 C74 58 62 72 50 82 Z" fill="url(#lotusGold)" opacity="0.85"/>
+          <!-- Lotus Base -->
+          <path d="M26 84 C40 92 60 92 74 84 C62 88 38 88 26 84 Z" fill="#d97706"/>
+        </svg>
+
+        <div class="brand-titles">
+          <h1>ระบบลงทะเบียนเข้างานวัด</h1>
+          <div class="brand-slogan">“ศรัทธาเชื่อมใจ เทคโนโลยีเชื่อมงานบุญ”</div>
+          <div class="brand-desc">สะดวก รวดเร็ว แม่นยำ ครบถ้วน • ร่วมสานงานบุญ ด้วยเทคโนโลยี เพื่อพระพุทธศาสนา</div>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <div class="motto-badge">วัดไทย วัดใจ วัดอนาคต</div>
+        <div id="gsheetStatusPill" class="gsheet-status-pill" title="คลิกเพื่อตั้งค่าการเชื่อมต่อ Google Sheets">
+          <span class="status-dot"></span>
+          <span id="gsheetStatusText">โหมดออฟไลน์ / Local Data</span>
+          <span style="font-size: 0.75rem; color: #64748b;">(⚙️ ตั้งค่า)</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Navigation Tabs Bar -->
+  <nav class="nav-bar-wrapper">
+    <div class="nav-container">
+      <button class="nav-tab tab-monk active" data-tab="tab-monk">
+        <span class="tab-num">1</span>
+        <span>ลงทะเบียนพระสงฆ์</span>
+      </button>
+      <button class="nav-tab tab-lay" data-tab="tab-lay">
+        <span class="tab-num">2</span>
+        <span>ลงทะเบียนญาติโยม</span>
+      </button>
+      <button class="nav-tab tab-slip" data-tab="tab-slip">
+        <span class="tab-num">3</span>
+        <span>รับใบปวารณา (ผู้มารับเงิน)</span>
+      </button>
+      <button class="nav-tab tab-report" data-tab="tab-report">
+        <span class="tab-num">4</span>
+        <span>รายงานสรุป & แดชบอร์ด</span>
+      </button>
+      <button class="nav-tab" data-tab="tab-settings" style="margin-left: auto;">
+        <span>⚙️ เชื่อมต่อ Google Sheets</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Main Content Areas -->
+  <main class="main-wrapper">
+
+    <!-- ====================================================================
+         TAB 1: ลงทะเบียนพระสงฆ์
+         ==================================================================== -->
+    <section id="tab-monk" class="tab-pane active">
+      <!-- Section Banner -->
+      <div class="section-banner monk-banner">
+        <div class="banner-left">
+          <div class="banner-badge-num">1</div>
+          <div class="banner-title">
+            <h2>ลงทะเบียนพระสงฆ์</h2>
+            <p>สแกนบัตรประชาชน เพื่อตรวจสอบรายชื่อที่เชิญ/นิมนต์ อัตโนมัติ</p>
+          </div>
+        </div>
+        <div class="banner-right">
+          <span style="font-size: 0.9rem; background: rgba(0,0,0,0.15); padding: 0.35rem 0.85rem; border-radius: 999px;">
+            พระสงฆ์นิมนต์ทั้งหมด <strong id="monksTotalCount">422</strong> รูป | ลงทะเบียนแล้ว <strong id="monksRegisteredCount">0</strong> รูป
+          </span>
+        </div>
+      </div>
+
+      <div class="workflow-grid">
+        <!-- 1.1 สแกนบัตรประชาชน -->
+        <div class="flow-card" style="grid-column: span 3;">
+          <div class="flow-card-header header-monk">
+            <span>1.1 สแกนบัตรประชาชน</span>
+            <span style="font-size: 0.8rem; opacity: 0.8;">Smart Card</span>
+          </div>
+          <div class="flow-card-body">
+            <div class="card-reader-box">
+              <div class="card-reader-img-wrap">
+                <img src="assets/smartcard_reader.jpg" alt="Smart Card Reader">
+              </div>
+              <div class="scanner-caption">เสียบบัตรประชาชน ระบบอ่านข้อมูลอัตโนมัติ</div>
+              <div class="scanner-hint">รองรับเครื่องอ่านบัตรสมาร์ทการ์ด USB / หรือจำลองค้นหา</div>
+
+              <!-- Quick Selector for testing -->
+              <div class="id-input-group">
+                <label for="monkQuickSelect">เลือกรายนามพระสงฆ์ตัวอย่าง (ทดสอบ):</label>
+                <select id="monkQuickSelect" class="select-control">
+                  <option value="">-- เลือกเพื่อจำลองเสียบบัตร --</option>
+                </select>
+              </div>
+
+              <!-- Manual ID Card Number -->
+              <div class="id-input-group">
+                <label for="monkIdCardInput">หรือกรอกเลขบัตรประชาชน 13 หลัก / ชื่อวัด:</label>
+                <div style="display: flex; gap: 0.5rem; width: 100%;">
+                  <input type="text" id="monkIdCardInput" class="input-control" placeholder="1-xxxx-xxxxx-xx-x" maxlength="20">
+                  <button id="btnMonkScan" class="btn btn-monk" style="white-space: nowrap;">
+                    🔍 อ่านบัตร
+                  </button>
+                </div>
+              </div>
+
+              <div style="font-size: 0.75rem; color: #94a3b8; text-align: left; width: 100%;">
+                💡 ลองพิมพ์ชื่อพระ เช่น <em>"เลี่ยม"</em>, <em>"บุญชู"</em>, <em>"คูณ"</em> หรือเลขบัตร
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 1.2 ตรวจสอบรายชื่อ -->
+        <div class="flow-card" style="grid-column: span 3;">
+          <div class="flow-card-header header-monk">
+            <span>1.2 ตรวจสอบรายชื่อ</span>
+            <span style="font-size: 0.8rem; opacity: 0.8;">Verification</span>
+          </div>
+          <div class="flow-card-body">
+            <div id="monkCheckingState" class="checking-box" style="display: none;">
+              <div class="spinner-search"></div>
+              <div class="checking-title">กำลังตรวจสอบข้อมูล...</div>
+              <div class="checking-desc">กรุณารอสักครู่ ระบบกำลังเทียบกับฐานข้อมูลนิมนต์</div>
+            </div>
+
+            <div id="monkIdleState" class="checking-box">
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#ea580c" stroke-width="1.5">
+                <circle cx="11" cy="11" r="8"/>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              <div class="checking-title">พร้อมตรวจสอบข้อมูล</div>
+              <div class="checking-desc">เสียบบัตรประชาชน หรือกดอ่านบัตรในขั้นตอน 1.1</div>
+            </div>
+
+            <!-- Result routing indicator -->
+            <div id="monkResultRouting" style="display: none; width: 100%; margin-top: 1rem;">
+              <div id="routeFound" style="display: none; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; padding: 0.75rem; color: #065f46; font-size: 0.85rem;">
+                ✓ <strong>พบในรายชื่อที่เชิญ/นิมนต์</strong><br>
+                ระบบดึงข้อมูลที่พักและสิทธิ์อัตโนมัติ (ดูข้อ 1.3)
+              </div>
+              <div id="routeNotFound" style="display: none; background: #fff1f2; border: 1px solid #fecdd3; border-radius: 8px; padding: 0.75rem; color: #9f1239; font-size: 0.85rem;">
+                ✕ <strong>ไม่พบในรายชื่อที่เชิญ</strong><br>
+                กรุณากรอกข้อมูลในแบบฟอร์มพระนอกรายชื่อ (ดูข้อ 1.4)
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 1.3 แสดงข้อมูลพระที่ได้รับเชิญ / 1.4 พระนอกรายชื่อ (Dynamic Pane) -->
+        <div class="flow-card" style="grid-column: span 6;">
+          <div class="flow-card-header header-monk">
+            <span id="monkDetailHeader">1.3 ข้อมูลการลงทะเบียนพระสงฆ์</span>
+            <span id="monkDetailSubheader" class="status-badge available">รอการตรวจสอบ</span>
+          </div>
+          <div class="flow-card-body">
+            
+            <!-- Default Placeholder when no search -->
+            <div id="monkDetailPlaceholder" style="text-align: center; padding: 3rem 1rem; color: #94a3b8;">
+              <p style="font-size: 1rem; margin-bottom: 0.5rem;">ยังไม่มีข้อมูลพระสงฆ์ที่เลือก</p>
+              <p style="font-size: 0.85rem;">กรุณาสแกนบัตร หรือเลือกรายนามเพื่อเริ่มลงทะเบียน</p>
+            </div>
+
+            <!-- Form 1.3: พบในรายชื่อที่เชิญ -->
+            <div id="monkInvitedForm" style="display: none;">
+              <div class="monk-profile-wrapper">
+                <div class="profile-avatar-wrap">
+                  <img id="infoMonkPhoto" src="assets/monk_avatar.jpg" alt="รูปพระสงฆ์">
+                </div>
+                <div class="profile-info-grid">
+                  <div class="info-item full-width">
+                    <span class="info-label">ชื่อ / ฉายา:</span>
+                    <span id="infoMonkName" class="info-value" style="font-size: 1.05rem; font-weight: 600; color: #92400e;">-</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="info-label">วัด:</span>
+                    <span id="infoMonkTemple" class="info-value">-</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="info-label">จังหวัด / สาขา:</span>
+                    <span id="infoMonkProvince" class="info-value">-</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="info-label">พรรษา ปัจจุบัน:</span>
+                    <span id="infoMonkVassa" class="info-value">-</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="info-label">สิทธิ์ใบปวารณา:</span>
+                    <span id="infoMonkSlipRight" class="info-value" style="color: #166534; font-weight: 600;">รับใบปวารณา (มีปัจจัย 5,000 บาท)</span>
+                  </div>
+                  <div class="info-item full-width">
+                    <span class="info-label">ข้อมูลที่พัก / โรงแรม:</span>
+                    <span id="infoMonkHotel" class="info-value highlight-room">🏨 โรงแรมธรรมรุจ ห้อง 101</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="info-label">สถานะการลงทะเบียน:</span>
+                    <span id="infoMonkStatus" class="status-badge available">• ลงทะเบียนได้</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="info-label">เวลาลงทะเบียน:</span>
+                    <span id="infoMonkTime" class="info-value" style="font-size: 0.85rem;">-</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card-actions-bar">
+                <button type="button" class="btn btn-secondary" onclick="resetMonkWorkflow()">ยกเลิก</button>
+                <button type="button" id="btnConfirmMonkRegistration" class="btn btn-monk">
+                  ✓ ยืนยันลงทะเบียนพระสงฆ์
+                </button>
+              </div>
+            </div>
+
+            <!-- Form 1.4: พระกรณีไม่ได้รับเชิญ / นอกรายชื่อ -->
+            <div id="monkWalkinForm" style="display: none;">
+              <div style="background: #fff7ed; border-left: 4px solid #ea580c; padding: 0.65rem 1rem; border-radius: 4px; margin-bottom: 1rem; font-size: 0.85rem; color: #9a3412;">
+                <strong>1.4 ลงทะเบียนพระ (กรณีไม่ได้รับเชิญ)</strong>: ไม่พบในรายชื่อนิมนต์ กรุณากรอกข้อมูลเพื่อบันทึกลงระบบ
+              </div>
+              <div class="monk-profile-wrapper">
+                <div class="profile-avatar-wrap">
+                  <img src="assets/monk_avatar.jpg" alt="รูปพระสงฆ์">
+                </div>
+                <div class="profile-info-grid">
+                  <div class="info-item full-width">
+                    <label class="info-label">ชื่อ / ฉายา (ระบุสมณศักดิ์/ฉายา):</label>
+                    <input type="text" id="walkinName" class="input-control" placeholder="เช่น พระสมชาย อภิปุญโญ">
+                  </div>
+                  <div class="info-item">
+                    <label class="info-label">เลขบัตรประชาชน:</label>
+                    <input type="text" id="walkinIdCard" class="input-control" placeholder="1-xxxx-xxxxx-xx-x">
+                  </div>
+                  <div class="info-item">
+                    <label class="info-label">พรรษา:</label>
+                    <input type="number" id="walkinVassa" class="input-control" placeholder="เช่น 15">
+                  </div>
+                  <div class="info-item full-width">
+                    <label class="info-label">ชื่อวัดต้นสังกัด:</label>
+                    <div style="display: flex; gap: 0.5rem;">
+                      <input type="text" id="walkinTemple" class="input-control" list="templeList" placeholder="ค้นหาหรือพิมพ์ชื่อวัด">
+                      <datalist id="templeList"></datalist>
+                      <button type="button" class="btn btn-secondary btn-sm" onclick="addNewTemplePrompt()" title="เพิ่มวัดใหม่">
+                        + เพิ่มวัด
+                      </button>
+                    </div>
+                  </div>
+                  <div class="info-item">
+                    <label class="info-label">จังหวัด:</label>
+                    <input type="text" id="walkinProvince" class="input-control" placeholder="เช่น เชียงใหม่ / อุบลราชธานี">
+                  </div>
+                  <div class="info-item">
+                    <label class="info-label">เบอร์โทรศัพท์ติดต่อ:</label>
+                    <input type="text" id="walkinPhone" class="input-control" placeholder="08x-xxx-xxxx">
+                  </div>
+                </div>
+              </div>
+
+              <div class="card-actions-bar">
+                <button type="button" class="btn btn-secondary" onclick="resetMonkWorkflow()">ยกเลิก</button>
+                <button type="button" id="btnSaveWalkinMonk" class="btn btn-monk">
+                  💾 บันทึกและลงทะเบียน
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         TAB 2: ลงทะเบียนญาติโยม
+         ==================================================================== -->
+    <section id="tab-lay" class="tab-pane">
+      <div class="section-banner lay-banner">
+        <div class="banner-left">
+          <div class="banner-badge-num">2</div>
+          <div class="banner-title">
+            <h2>ลงทะเบียนญาติโยม</h2>
+            <p>สแกนบัตรประชาชน เพื่อนำเข้าข้อมูลอัตโนมัติ รวดเร็วและแม่นยำ</p>
+          </div>
+        </div>
+        <div class="banner-right">
+          <span style="font-size: 0.9rem; background: rgba(0,0,0,0.15); padding: 0.35rem 0.85rem; border-radius: 999px;">
+            ญาติโยมลงทะเบียนแล้ว <strong id="layRegisteredCount">0</strong> คน
+          </span>
+        </div>
+      </div>
+
+      <div class="workflow-grid">
+        <!-- 2.1 สแกนบัตรประชาชน -->
+        <div class="flow-card" style="grid-column: span 4;">
+          <div class="flow-card-header header-lay">
+            <span>2.1 สแกนบัตรประชาชน</span>
+            <span style="font-size: 0.8rem; opacity: 0.8;">Citizen Card Reader</span>
+          </div>
+          <div class="flow-card-body">
+            <div class="card-reader-box">
+              <div class="card-reader-img-wrap">
+                <img src="assets/smartcard_reader.jpg" alt="Smart Card Reader">
+              </div>
+              <div class="scanner-caption">เสียบบัตรประชาชน ระบบอ่านข้อมูลอัตโนมัติ</div>
+              <div class="scanner-hint">อ่านข้อมูลชื่อ นามสกุล วันเกิด เพศ และที่อยู่จากชิปการ์ด</div>
+
+              <div class="id-input-group">
+                <label>จำลองอ่านข้อมูลบัตรประชาชนญาติโยม:</label>
+                <div style="display: flex; gap: 0.5rem; width: 100%;">
+                  <button type="button" id="btnSimulateLayScan" class="btn btn-lay" style="width: 100%;">
+                    💳 จำลองอ่านข้อมูลจากบัตรประชาชน
+                  </button>
+                </div>
+              </div>
+
+              <div class="id-input-group">
+                <label for="layIdCardManual">หรือกรอกเลขบัตรประชาชน 13 หลัก:</label>
+                <input type="text" id="layIdCardManual" class="input-control" placeholder="1-xxxx-xxxxx-xx-x" maxlength="17">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2.2 แสดงข้อมูลจากบัตร & 2.3 เพิ่มข้อมูลและยืนยัน -->
+        <div class="flow-card" style="grid-column: span 8;">
+          <div class="flow-card-header header-lay">
+            <span>2.2 & 2.3 แสดงข้อมูลจากบัตรและยืนยันข้อมูล</span>
+            <span class="status-badge available" id="layStatusBadge">พร้อมลงทะเบียน</span>
+          </div>
+          <div class="flow-card-body">
+            
+            <div style="font-weight: 600; color: #0369a1; margin-bottom: 0.75rem; font-size: 0.95rem; border-bottom: 1px dashed #bae6fd; padding-bottom: 0.35rem;">
+              ข้อมูลส่วนบุคคลที่อ่านได้จากชิปบัตรประชาชน (ข้อ 2.2)
+            </div>
+
+            <div class="profile-info-grid" style="margin-bottom: 1.5rem;">
+              <div class="info-item">
+                <label class="info-label">ชื่อ - นามสกุล:</label>
+                <input type="text" id="layName" class="input-control" value="นายสมชาย ใจดี">
+              </div>
+              <div class="info-item">
+                <label class="info-label">เลขบัตรประชาชน:</label>
+                <input type="text" id="layIdCard" class="input-control" value="1-2345-67890-12-3">
+              </div>
+              <div class="info-item">
+                <label class="info-label">วันเกิด:</label>
+                <input type="text" id="layBirthday" class="input-control" value="12/03/2530">
+              </div>
+              <div class="info-item">
+                <label class="info-label">เพศ:</label>
+                <select id="layGender" class="select-control">
+                  <option value="ชาย" selected>ชาย</option>
+                  <option value="หญิง">หญิง</option>
+                </select>
+              </div>
+              <div class="info-item full-width">
+                <label class="info-label">ที่อยู่ตามทะเบียนบ้าน:</label>
+                <input type="text" id="layAddress" class="input-control" value="123 หมู่ 1 ต.ในเมือง อ.เมือง จ.เชียงใหม่">
+              </div>
+            </div>
+
+            <div style="font-weight: 600; color: #0369a1; margin-bottom: 0.75rem; font-size: 0.95rem; border-bottom: 1px dashed #bae6fd; padding-bottom: 0.35rem;">
+              เพิ่มข้อมูลการติดต่อและยืนยัน (ข้อ 2.3)
+            </div>
+
+            <div class="profile-info-grid">
+              <div class="info-item">
+                <label class="info-label">เบอร์โทรศัพท์มือถือ:</label>
+                <input type="text" id="layPhone" class="input-control" value="081-234-5678" placeholder="08x-xxx-xxxx">
+              </div>
+              <div class="info-item">
+                <label class="info-label">เบอร์ติดต่อกรณีฉุกเฉิน:</label>
+                <input type="text" id="layEmergencyPhone" class="input-control" value="089-987-6543" placeholder="08x-xxx-xxxx">
+              </div>
+            </div>
+
+            <div class="card-actions-bar">
+              <button type="button" class="btn btn-secondary" onclick="resetLayWorkflow()">ยกเลิก</button>
+              <button type="button" id="btnConfirmLayRegistration" class="btn btn-lay">
+                ✓ ยืนยันลงทะเบียนญาติโยม
+              </button>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         TAB 3: รับใบปวารณา (ผู้มารับเงิน)
+         ==================================================================== -->
+    <section id="tab-slip" class="tab-pane">
+      <div class="section-banner slip-banner">
+        <div class="banner-left">
+          <div class="banner-badge-num">3</div>
+          <div class="banner-title">
+            <h2>รับใบปวารณา (ผู้มารับเงิน)</h2>
+            <p>ค้นหาวัด / ชื่อพระ / สาขา และเลือกพระเถระที่ลงทะเบียนแล้ว พร้อมถ่ายรูปผู้มารับ</p>
+          </div>
+        </div>
+        <div class="banner-right">
+          <span style="font-size: 0.9rem; background: rgba(0,0,0,0.15); padding: 0.35rem 0.85rem; border-radius: 999px;">
+            จ่ายใบปวารณาแล้ว <strong id="slipDeliveredCount">0</strong> รายการ | ยอดรวม <strong id="slipTotalAmount">0</strong> บาท
+          </span>
+        </div>
+      </div>
+
+      <div class="workflow-grid">
+        <!-- 3.1 ค้นหาข้อมูล & 3.2 เลือกพระเถระที่ลงทะเบียนแล้ว -->
+        <div class="flow-card" style="grid-column: span 6;">
+          <div class="flow-card-header header-slip">
+            <span>3.1 & 3.2 ค้นหาและเลือกพระเถระที่ลงทะเบียน</span>
+            <span style="font-size: 0.8rem; opacity: 0.8;">Search & Select</span>
+          </div>
+          <div class="flow-card-body">
+            
+            <!-- 3.1 Search Filters -->
+            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 0.85rem; border-radius: 8px; margin-bottom: 1rem;">
+              <div style="font-weight: 600; color: #166534; font-size: 0.88rem; margin-bottom: 0.5rem;">
+                3.1 ค้นหาข้อมูลพระสงฆ์
+              </div>
+              <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-bottom: 0.5rem;">
+                <div>
+                  <label style="font-size: 0.75rem; color: #475569; font-weight: 500;">ชื่อพระ / ฉายา:</label>
+                  <input type="text" id="slipSearchMonk" class="input-control" placeholder="เช่น เลี่ยม, สมชาย">
+                </div>
+                <div>
+                  <label style="font-size: 0.75rem; color: #475569; font-weight: 500;">สาขา:</label>
+                  <input type="text" id="slipSearchBranch" class="input-control" placeholder="เช่น สาขาที่ 008">
+                </div>
+                <div>
+                  <label style="font-size: 0.75rem; color: #475569; font-weight: 500;">ชื่อวัด:</label>
+                  <input type="text" id="slipSearchTemple" class="input-control" placeholder="เช่น วัดหนองป่าพง">
+                </div>
+              </div>
+              <div style="display: flex; justify-content: flex-end; gap: 0.5rem;">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="clearSlipSearch()">ล้างค่า</button>
+                <button type="button" id="btnSlipSearch" class="btn btn-slip btn-sm">
+                  🔍 ค้นหาข้อมูล
+                </button>
+              </div>
+            </div>
+
+            <!-- 3.2 Monks Table -->
+            <div style="font-weight: 600; color: #166534; font-size: 0.88rem; margin-bottom: 0.35rem;">
+              3.2 เลือกพระเถระที่ลงทะเบียนแล้ว (คลิกแถวเพื่อเลือก):
+            </div>
+            <div class="table-responsive" style="max-height: 320px; overflow-y: auto;">
+              <table class="custom-table" id="slipMonksTable">
+                <thead>
+                  <tr>
+                    <th style="width: 50px;">ลำดับ</th>
+                    <th>ชื่อ / ฉายา</th>
+                    <th>วัด</th>
+                    <th style="width: 60px;">พรรษา</th>
+                    <th style="width: 90px;">สถานะ</th>
+                  </tr>
+                </thead>
+                <tbody id="slipMonksTableBody">
+                  <!-- Dynamic rows -->
+                </tbody>
+              </table>
+            </div>
+
+            <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.5rem;">
+              * แสดงเฉพาะพระสงฆ์ที่ลงทะเบียนเข้างานแล้ว หรือรายนามที่มีสิทธิ์รับใบปวารณา
+            </div>
+
+          </div>
+        </div>
+
+        <!-- 3.3 บันทึกข้อมูลการรับ & 3.4 ถ่ายรูปผู้มารับ -->
+        <div class="flow-card" style="grid-column: span 6;">
+          <div class="flow-card-header header-slip">
+            <span>3.3 & 3.4 บันทึกข้อมูลการรับและถ่ายรูปผู้มารับ</span>
+            <span class="status-badge available" id="slipSelectedBadge">รอเลือกพระเถระ</span>
+          </div>
+          <div class="flow-card-body">
+            
+            <div style="display: flex; gap: 1.25rem; flex-wrap: wrap;">
+              
+              <!-- 3.3 Form Fields -->
+              <div style="flex: 1; min-width: 250px;">
+                <div style="font-weight: 600; color: #166534; font-size: 0.88rem; margin-bottom: 0.5rem;">
+                  3.3 บันทึกข้อมูลการรับเงิน/ใบปวารณา
+                </div>
+                <div class="profile-info-grid" style="grid-template-columns: 1fr;">
+                  <div class="info-item">
+                    <label class="info-label">ชื่อวัด:</label>
+                    <input type="text" id="slipRecTemple" class="input-control" readonly placeholder="คลิกเลือกจากตาราง 3.2" style="background: #f8fafc;">
+                  </div>
+                  <div class="info-item">
+                    <label class="info-label">ชื่อพระ / ฉายา:</label>
+                    <input type="text" id="slipRecMonkName" class="input-control" readonly placeholder="คลิกเลือกจากตาราง 3.2" style="background: #f8fafc; font-weight: 600; color: #166534;">
+                  </div>
+                  <div class="info-item">
+                    <label class="info-label">จำนวนปัจจัย (บาท):</label>
+                    <input type="number" id="slipRecAmount" class="input-control" value="5000" style="font-size: 1.1rem; font-weight: 700; color: #166534;">
+                  </div>
+                  <div class="info-item">
+                    <label class="info-label">ชื่อ - นามสกุล ผู้มารับเงินแทน / ผู้รับมอบฉันทะ:</label>
+                    <input type="text" id="slipRecReceiverName" class="input-control" placeholder="เช่น นายสมชาย ใจดี">
+                  </div>
+                  <div class="info-item">
+                    <label class="info-label">เบอร์โทรศัพท์ผู้รับ:</label>
+                    <input type="text" id="slipRecReceiverPhone" class="input-control" placeholder="08x-xxx-xxxx">
+                  </div>
+                </div>
+              </div>
+
+              <!-- 3.4 Camera / Photo Capture -->
+              <div style="width: 220px; display: flex; flex-direction: column; align-items: center; gap: 0.5rem;">
+                <div style="font-weight: 600; color: #166534; font-size: 0.88rem; width: 100%; text-align: center;">
+                  3.4 ถ่ายรูปผู้มารับ
+                </div>
+                <div class="camera-preview-box" id="cameraBox">
+                  <video id="webcamVideo" autoplay playsinline style="display: none;"></video>
+                  <img id="receiverPhotoPreview" src="assets/receiver_avatar.jpg" alt="รูปผู้มารับ">
+                  <canvas id="photoCanvas" style="display: none;"></canvas>
+                  <span class="camera-overlay-badge" id="cameraBadge">รูปตัวอย่าง</span>
+                </div>
+                <div style="display: flex; gap: 0.35rem; width: 100%;">
+                  <button type="button" id="btnStartCamera" class="btn btn-secondary btn-sm" style="flex: 1;">
+                    📷 เปิดกล้อง
+                  </button>
+                  <button type="button" id="btnSnapPhoto" class="btn btn-slip btn-sm" style="flex: 1;" disabled>
+                    📸 ถ่ายรูป
+                  </button>
+                </div>
+                <input type="file" id="photoFileInput" accept="image/*" style="display: none;">
+                <button type="button" class="btn btn-secondary btn-sm" style="width: 100%; font-size: 0.75rem;" onclick="document.getElementById('photoFileInput').click()">
+                  📁 หรือเลือกไฟล์รูปภาพ
+                </button>
+              </div>
+
+            </div>
+
+            <div class="card-actions-bar">
+              <button type="button" class="btn btn-secondary" onclick="resetSlipWorkflow()">ยกเลิก</button>
+              <button type="button" id="btnConfirmSlipReceive" class="btn btn-slip">
+                ✓ ยืนยันการรับใบปวารณา
+              </button>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         TAB 4: รายงานสรุป & แดชบอร์ด
+         ==================================================================== -->
+    <section id="tab-report" class="tab-pane">
+      <div class="section-banner report-banner">
+        <div class="banner-left">
+          <div class="banner-badge-num">📊</div>
+          <div class="banner-title">
+            <h2>รายงานสรุป & แดชบอร์ดข้อมูล</h2>
+            <p>ตรวจสอบและติดตามสถานะการลงทะเบียนและการเบิกจ่ายปัจจัยแบบเรียลไทม์</p>
+          </div>
+        </div>
+        <div class="banner-right" style="display: flex; gap: 0.5rem;">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="exportDataToCsv()">
+            📥 ส่งออก CSV (Excel)
+          </button>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="window.print()">
+            🖨️ พิมพ์รายงาน
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick KPI Cards -->
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
+        <div class="flow-card" style="padding: 1.25rem; border-left: 4px solid #ea580c;">
+          <div style="font-size: 0.85rem; color: #64748b;">พระสงฆ์นิมนต์ทั้งหมด</div>
+          <div style="font-size: 1.8rem; font-weight: 700; color: #ea580c;" id="kpiMonkTotal">422</div>
+          <div style="font-size: 0.8rem; color: #166534;" id="kpiMonkRegistered">ลงทะเบียนแล้ว 0 รูป</div>
+        </div>
+
+        <div class="flow-card" style="padding: 1.25rem; border-left: 4px solid #f59e0b;">
+          <div style="font-size: 0.85rem; color: #64748b;">พระสงฆ์นอกรายชื่อ</div>
+          <div style="font-size: 1.8rem; font-weight: 700; color: #f59e0b;" id="kpiMonkWalkin">0</div>
+          <div style="font-size: 0.8rem; color: #64748b;">รูปที่ลงทะเบียนเพิ่มเติม</div>
+        </div>
+
+        <div class="flow-card" style="padding: 1.25rem; border-left: 4px solid #0284c7;">
+          <div style="font-size: 0.85rem; color: #64748b;">ญาติโยมที่ลงทะเบียน</div>
+          <div style="font-size: 1.8rem; font-weight: 700; color: #0284c7;" id="kpiLayTotal">0</div>
+          <div style="font-size: 0.8rem; color: #64748b;">คนเข้าร่วมงาน</div>
+        </div>
+
+        <div class="flow-card" style="padding: 1.25rem; border-left: 4px solid #16a34a;">
+          <div style="font-size: 0.85rem; color: #64748b;">จ่ายปัจจัยใบปวารณาแล้ว</div>
+          <div style="font-size: 1.8rem; font-weight: 700; color: #16a34a;" id="kpiSlipAmount">0 บาท</div>
+          <div style="font-size: 0.8rem; color: #166534;" id="kpiSlipCount">รับแล้ว 0 รายการ</div>
+        </div>
+      </div>
+
+      <!-- Live Data Table with Filter Tabs -->
+      <div class="flow-card">
+        <div class="flow-card-header" style="background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+          <div style="display: flex; gap: 0.5rem;">
+            <button class="btn btn-secondary btn-sm active-filter" id="btnFilterMonks" onclick="switchReportSubTab('monks')">พระสงฆ์ที่นิมนต์</button>
+            <button class="btn btn-secondary btn-sm" id="btnFilterWalkin" onclick="switchReportSubTab('walkin')">พระนอกรายชื่อ</button>
+            <button class="btn btn-secondary btn-sm" id="btnFilterLay" onclick="switchReportSubTab('lay')">ญาติโยม</button>
+            <button class="btn btn-secondary btn-sm" id="btnFilterSlips" onclick="switchReportSubTab('slips')">รายการรับใบปวารณา</button>
+          </div>
+          <div>
+            <input type="text" id="reportSearchInput" class="input-control" placeholder="ค้นหาข้อมูล..." style="width: 220px; padding: 0.35rem 0.65rem; font-size: 0.85rem;">
+          </div>
+        </div>
+        <div class="flow-card-body" style="padding: 0;">
+          <div class="table-responsive" style="max-height: 480px; overflow-y: auto;">
+            <table class="custom-table" id="reportDataTable">
+              <thead id="reportTableHead"></thead>
+              <tbody id="reportTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         TAB 5: ตั้งค่าเชื่อมต่อ Google Sheets
+         ==================================================================== -->
+    <section id="tab-settings" class="tab-pane">
+      <div class="section-banner" style="background: linear-gradient(135deg, #0f766e 0%, #115e59 100%);">
+        <div class="banner-left">
+          <div class="banner-badge-num">⚙️</div>
+          <div class="banner-title">
+            <h2>ตั้งค่าเชื่อมต่อ Google Sheets</h2>
+            <p>บันทึกและซิงก์ข้อมูลลงบน Google Sheet ของคุณแบบเรียลไทม์</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="workflow-grid">
+        <div class="flow-card" style="grid-column: span 6;">
+          <div class="flow-card-header" style="background: #f0fdfa; color: #0f766e; border-bottom: 2px solid #99f6e4;">
+            <span>การเชื่อมต่อ Google Apps Script Web App</span>
+          </div>
+          <div class="flow-card-body">
+            
+            <div class="id-input-group">
+              <label for="settingsGasUrl">Google Apps Script Web App URL (Exec URL):</label>
+              <input type="text" id="settingsGasUrl" class="input-control" placeholder="https://script.google.com/macros/s/.../exec">
+              <span style="font-size: 0.78rem; color: #64748b;">
+                * สร้างได้จาก Google Sheets เมนู ส่วนขยาย > Apps Script > เผยแพร่เป็นเว็บแอป (ทุกคนเข้าถึงได้)
+              </span>
+            </div>
+
+            <div style="display: flex; gap: 0.75rem; margin-top: 1rem;">
+              <button type="button" id="btnSaveGasUrl" class="btn btn-monk" style="background: #0f766e;">
+                💾 บันทึกการเชื่อมต่อ
+              </button>
+              <button type="button" id="btnTestGasUrl" class="btn btn-secondary">
+                🔄 ทดสอบการเชื่อมต่อ (Ping)
+              </button>
+            </div>
+
+            <div id="gasConnectionStatus" style="margin-top: 1rem; padding: 0.75rem; border-radius: 8px; font-size: 0.88rem; display: none;"></div>
+
+            <div style="margin-top: 1.5rem; border-top: 1px dashed #cbd5e1; padding-top: 1rem;">
+              <h4 style="font-size: 0.95rem; font-weight: 600; color: #1e293b; margin-bottom: 0.5rem;">
+                🚀 ซิงก์ข้อมูลตั้งต้นไปยัง Google Sheet (422 รายนามพระสงฆ์)
+              </h4>
+              <p style="font-size: 0.82rem; color: #64748b; margin-bottom: 0.75rem;">
+                กดปุ่มนี้เพื่อสร้างแผ่นงาน 4 ส่วนอัตโนมัติ และอัปโหลดข้อมูล 422 รายนามจากไฟล์ Excel เดิมขึ้นไปยัง Google Sheet ของคุณทันที
+              </p>
+              <button type="button" id="btnPushMonksToSheet" class="btn btn-slip" style="width: 100%;">
+                ☁️ นำเข้า 422 รายนามพระสงฆ์ขึ้น Google Sheet ทันที
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="flow-card" style="grid-column: span 6;">
+          <div class="flow-card-header" style="background: #f8fafc;">
+            <span>คู่มือการติดตั้ง Google Sheet แบบ 3 ขั้นตอน</span>
+          </div>
+          <div class="flow-card-body" style="font-size: 0.88rem; color: #334155; line-height: 1.7;">
+            <ol style="padding-left: 1.25rem;">
+              <li>เปิด <a href="https://sheets.new" target="_blank" style="color: #0284c7; font-weight: 600;">Google Sheets (สร้างใหม่)</a></li>
+              <li>ไปที่เมนู <strong>ส่วนขยาย (Extensions)</strong> &gt; <strong>Apps Script</strong></li>
+              <li>นำโค้ดในไฟล์ <code style="background: #f1f5f9; padding: 2px 5px; border-radius: 4px;">GoogleAppsScript_Backend.js</code> ไปวางแทนที่โค้ดเดิมทั้งหมด</li>
+              <li>กด <strong>ทำให้ใช้งานได้ (Deploy)</strong> &gt; <strong>การทำให้ใช้งานได้ใหม่ (New deployment)</strong>
+                <ul style="padding-left: 1rem; margin-top: 0.25rem;">
+                  <li>เลือกประเภท: <strong>เว็บแอปพลิเคชัน (Web app)</strong></li>
+                  <li>ใครมีสิทธิ์เข้าถึง: <strong>ทุกคน (Anyone)</strong></li>
+                </ul>
+              </li>
+              <li>คัดลอก Web App URL (ลงท้ายด้วย <code style="background: #f1f5f9; padding: 2px 4px;">/exec</code>) มาวางในช่องทางด้านซ้ายแล้วกดบันทึก</li>
+            </ol>
+
+            <div style="margin-top: 1rem;">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="copyGasCodeToClipboard()">
+                📋 คัดลอกโค้ด Google Apps Script ทันที
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Site Footer -->
+  <footer class="site-footer">
+    <div class="footer-quote">“วัดคือศูนย์รวมจิตใจ เทคโนโลยีคือสะพานแห่งศรัทธา”</div>
+    <div>ทำงานด้วยใจ เพื่อพระพุทธศาสนา • ระบบลงทะเบียนเข้างานวัด วัดหนองป่าพง</div>
+  </footer>
+
+  <!-- Toast Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- Scripts -->
+  <script src="monks_data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

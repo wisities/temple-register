@@ -1,0 +1,454 @@
+/**
+ * =========================================================================================
+ * ระบบลงทะเบียนเข้างานวัด (Temple Event Registration System)
+ * Google Apps Script Backend for Google Sheets
+ * =========================================================================================
+ * วิธีติดตั้ง:
+ * 1. เปิด Google Sheets สร้างเอกสารใหม่ (เช่น ตั้งชื่อว่า "ระบบลงทะเบียนงานวัดหนองป่าพง")
+ * 2. ไปที่เมนู "ส่วนขยาย" (Extensions) > "Apps Script"
+ * 3. ลบโค้ดเดิมทั้งหมดออก แล้ววางโค้ดทั้งหมดนี้ลงไป
+ * 4. กดปุ่ม "บันทึก" (รูปแผ่นดิสก์)
+ * 5. กดปุ่ม "ทำให้ใช้งานได้" (Deploy) > "การทำให้ใช้งานได้ใหม่" (New deployment)
+ *    - เลือกประเภท: "เว็บแอปพลิเคชัน" (Web app)
+ *    - คำอธิบาย: "v1.0"
+ *    - ปฏิบัติการในฐานะ: "ฉัน" (Me)
+ *    - ใครมีสิทธิ์เข้าถึง: "ทุกคน" (Anyone) **สำคัญมาก ต้องเลือกทุกคนเพื่อให้เว็บแอปเชื่อมต่อได้**
+ * 6. กด "ทำให้ใช้งานได้" (Deploy) แล้วคัดลอก "URL เว็บแอปพลิเคชัน" (ขึ้นต้นด้วย https://script.google.com/macros/s/.../exec)
+ * 7. นำ URL มาใส่ในหน้าตั้งค่าเว็บแอป เพื่อเชื่อมโยงข้อมูล
+ * =========================================================================================
+ */
+
+// ชื่อแผ่นงาน (Sheets) ทั้ง 4 ส่วน
+const SHEET_NAMES = {
+  INVITED_MONKS: "พระสงฆ์ที่นิมนต์",
+  WALKIN_MONKS: "ลงทะเบียนพระนอกรายชื่อ",
+  LAYPEOPLE: "ลงทะเบียนญาติโยม",
+  SLIPS: "รับใบปวารณา",
+  SETTINGS: "ตั้งค่าระบบ"
+};
+
+/**
+ * Handle GET Requests
+ */
+function doGet(e) {
+  const params = e ? e.parameter : {};
+  const action = params.action || "ping";
+  const callback = params.callback; // For JSONP support if needed
+
+  let result = {};
+
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+    if (action === "ping") {
+      result = { status: "success", message: "Google Sheet Backend is Online", sheetName: ss.getName() };
+    } else if (action === "get_all_data") {
+      result = {
+        status: "success",
+        monks: getSheetDataAsJson(ss, SHEET_NAMES.INVITED_MONKS),
+        walkinMonks: getSheetDataAsJson(ss, SHEET_NAMES.WALKIN_MONKS),
+        laypeople: getSheetDataAsJson(ss, SHEET_NAMES.LAYPEOPLE),
+        slips: getSheetDataAsJson(ss, SHEET_NAMES.SLIPS)
+      };
+    } else if (action === "get_monks") {
+      result = { status: "success", data: getSheetDataAsJson(ss, SHEET_NAMES.INVITED_MONKS) };
+    } else if (action === "get_laypeople") {
+      result = { status: "success", data: getSheetDataAsJson(ss, SHEET_NAMES.LAYPEOPLE) };
+    } else if (action === "get_slips") {
+      result = { status: "success", data: getSheetDataAsJson(ss, SHEET_NAMES.SLIPS) };
+    } else if (action === "setup") {
+      setupSheets(ss);
+      result = { status: "success", message: "Setup sheets successfully" };
+    } else {
+      result = { status: "error", message: "Unknown action: " + action };
+    }
+  } catch (error) {
+    result = { status: "error", message: error.toString() };
+  }
+
+  const jsonOutput = JSON.stringify(result);
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + jsonOutput + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+
+  return ContentService.createTextOutput(jsonOutput)
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+/**
+ * Handle POST Requests
+ */
+function doPost(e) {
+  let result = {};
+
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let data = {};
+
+    if (e.postData && e.postData.contents) {
+      try {
+        data = JSON.parse(e.postData.contents);
+      } catch (err) {
+        data = e.parameter || {};
+      }
+    } else {
+      data = e.parameter || {};
+    }
+
+    const action = data.action;
+
+    if (action === "setup_sheets") {
+      setupSheets(ss);
+      result = { status: "success", message: "สร้างแผ่นงานเริ่มต้นเรียบร้อยแล้ว" };
+    } 
+    else if (action === "batch_import_monks") {
+      // นำเข้าข้อมูลพระนิมนต์เริ่มต้นชุดใหญ่
+      const monks = data.monks || [];
+      const count = importMonksBatch(ss, monks);
+      result = { status: "success", count: count, message: "นำเข้ารายชื่อพระนิมนต์สำเร็จ " + count + " รูป" };
+    }
+    else if (action === "register_monk") {
+      // ลงทะเบียนพระที่ได้รับนิมนต์
+      result = registerMonk(ss, data);
+    }
+    else if (action === "register_walkin_monk") {
+      // ลงทะเบียนพระนอกรายชื่อ
+      result = registerWalkinMonk(ss, data);
+    }
+    else if (action === "register_layperson") {
+      // ลงทะเบียนญาติโยม
+      result = registerLayperson(ss, data);
+    }
+    else if (action === "receive_slip") {
+      // บันทึกการรับใบปวารณา / ปัจจัย พร้อมรูปถ่าย
+      result = receiveSlip(ss, data);
+    }
+    else {
+      result = { status: "error", message: "Unknown POST action: " + action };
+    }
+
+  } catch (error) {
+    result = { status: "error", message: error.toString() };
+  }
+
+  return ContentService.createTextOutput(JSON.stringify(result))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+/**
+ * ตั้งค่าแผ่นงานและหัวตารางทั้ง 4 แผ่นงาน
+ */
+function setupSheets(ss) {
+  // 1. พระสงฆ์ที่นิมนต์ (คอลัมน์ A ถึง R ตาม Excel + คอลัมน์ระบบ)
+  let sheet1 = ss.getSheetByName(SHEET_NAMES.INVITED_MONKS);
+  if (!sheet1) sheet1 = ss.insertSheet(SHEET_NAMES.INVITED_MONKS);
+  const h1 = [
+    [
+      "ลำดับที่",             // A
+      "ภาพ",                 // B
+      "ชื่อลำดับสาขา",       // C
+      "ที่อยู่ (แบบรวมชื่อ)",  // D
+      "ชื่อลำดับสาขา (ย่อ)",  // E
+      "ลำดับสาขา",           // F
+      "ชื่อวัด",              // G
+      "ชื่อพระ / ฉายา",      // H
+      "อายุอุปสมบท",         // I
+      "วันที่",              // J
+      "เดือน",               // K
+      "พ.ศ.",               // L
+      "โทรศัพท์",            // M
+      "ที่อยู่",              // N
+      "พรรษาปัจจุบัน",        // O
+      "การนิมนต์",           // P
+      "อำเภอ",               // Q
+      "จังหวัด",             // R
+      "เลขบัตรประชาชน",      // S
+      "ที่พัก / โรงแรม",      // T
+      "สถานะลงทะเบียน",       // U
+      "เวลาที่ลงทะเบียน",     // V
+      "สถานะรับใบปวารณา"     // W
+    ]
+  ];
+  sheet1.getRange(1, 1, 1, h1[0].length).setValues(h1)
+    .setFontWeight("bold")
+    .setBackground("#fef3c7")
+    .setFontColor("#92400e");
+  sheet1.setFrozenRows(1);
+
+  // 2. ลงทะเบียนพระนอกรายชื่อ
+  let sheet2 = ss.getSheetByName(SHEET_NAMES.WALKIN_MONKS);
+  if (!sheet2) sheet2 = ss.insertSheet(SHEET_NAMES.WALKIN_MONKS);
+  const h2 = [
+    ["ลำดับที่", "รหัส", "เลขบัตรประชาชน", "ชื่อ / ฉายา", "ชื่อวัด", "พรรษา", "จังหวัด", "เบอร์โทรศัพท์", "สถานะลงทะเบียน", "เวลาที่ลงทะเบียน"]
+  ];
+  sheet2.getRange(1, 1, 1, h2[0].length).setValues(h2)
+    .setFontWeight("bold")
+    .setBackground("#fed7aa")
+    .setFontColor("#9a3412");
+  sheet2.setFrozenRows(1);
+
+  // 3. ลงทะเบียนญาติโยม
+  let sheet3 = ss.getSheetByName(SHEET_NAMES.LAYPEOPLE);
+  if (!sheet3) sheet3 = ss.insertSheet(SHEET_NAMES.LAYPEOPLE);
+  const h3 = [
+    ["ลำดับที่", "รหัส", "เลขบัตรประชาชน", "ชื่อ - นามสกุล", "วันเกิด", "เพศ", "ที่อยู่", "เบอร์โทรศัพท์", "เบอร์ติดต่อฉุกเฉิน", "เวลาที่ลงทะเบียน"]
+  ];
+  sheet3.getRange(1, 1, 1, h3[0].length).setValues(h3)
+    .setFontWeight("bold")
+    .setBackground("#dbeafe")
+    .setFontColor("#1e40af");
+  sheet3.setFrozenRows(1);
+
+  // 4. รับใบปวารณา
+  let sheet4 = ss.getSheetByName(SHEET_NAMES.SLIPS);
+  if (!sheet4) sheet4 = ss.insertSheet(SHEET_NAMES.SLIPS);
+  const h4 = [
+    ["รหัสบันทึก", "รหัสพระ", "ชื่อวัด", "ชื่อพระ / ฉายา", "พรรษา", "จำนวนปัจจัย (บาท)", "ชื่อผู้มารับเงิน", "เบอร์ติดต่อผู้รับ", "สถานะการรับ", "วันเวลาที่รับ", "ลิงก์รูปถ่ายผู้รับ"]
+  ];
+  sheet4.getRange(1, 1, 1, h4[0].length).setValues(h4)
+    .setFontWeight("bold")
+    .setBackground("#dcfce7")
+    .setFontColor("#166534");
+  sheet4.setFrozenRows(1);
+}
+
+/**
+ * นำเข้ารายชื่อพระนิมนต์
+ */
+function importMonksBatch(ss, monks) {
+  let sheet = ss.getSheetByName(SHEET_NAMES.INVITED_MONKS);
+  if (!sheet) {
+    setupSheets(ss);
+    sheet = ss.getSheetByName(SHEET_NAMES.INVITED_MONKS);
+  }
+
+  // Clear existing data rows except header
+  const lastRow = sheet.getLastRow();
+  if (lastRow > 1) {
+    sheet.deleteRows(2, lastRow - 1);
+  }
+
+  if (!monks || monks.length === 0) return 0;
+
+  const rows = monks.map((m, idx) => [
+    idx + 1,                                            // A: ลำดับที่
+    m.photoUrl ? '=IMAGE("' + m.photoUrl + '")' : "",   // B: ภาพ (สูตร =IMAGE() หรือ URL)
+    m.branchName1 || m.branch || "",                    // C: ชื่อลำดับสาขา
+    m.fullAddressWithName || "",                        // D: ที่อยู่ (แบบรวมชื่อ)
+    m.branchName2 || "",                                // E: ชื่อลำดับสาขา (ย่อ)
+    m.branchNo || "",                                   // F: ลำดับสาขา
+    m.temple || "",                                     // G: ชื่อวัด
+    m.name || "",                                       // H: ชื่อพระ
+    m.ordainAge || "",                                  // I: อายุอุปสมบท
+    m.ordainDay || "",                                  // J: วันที่
+    m.ordainMonth || "",                                // K: เดือน
+    m.ordainYear || "",                                 // L: พ.ศ.
+    m.phone || "",                                      // M: โทรศัพท์
+    m.address || "",                                    // N: ที่อยู่
+    m.vassa || 0,                                       // O: พรรษาปัจจุบัน
+    m.invited || "Y",                                   // P: การนิมนต์ (Y หรือ N/A)
+    m.district || "",                                   // Q: อำเภอ
+    m.province || "",                                   // R: จังหวัด
+    m.idCard || "",                                     // S: เลขบัตรประชาชน
+    m.hotel || "",                                      // T: ที่พัก / โรงแรม
+    m.status || "ยังไม่ลงทะเบียน",                      // U: สถานะลงทะเบียน
+    m.registeredAt || "",                               // V: เวลาที่ลงทะเบียน
+    m.slipStatus || "ยังไม่ได้รับ"                       // W: สถานะรับใบปวารณา
+  ]);
+
+  sheet.getRange(2, 1, rows.length, rows[0].length).setValues(rows);
+  return rows.length;
+}
+
+/**
+ * ยืนยันการลงทะเบียนพระสงฆ์ที่นิมนต์
+ */
+function registerMonk(ss, data) {
+  const sheet = ss.getSheetByName(SHEET_NAMES.INVITED_MONKS);
+  if (!sheet) throw new Error("ไม่พบแผ่นงาน " + SHEET_NAMES.INVITED_MONKS);
+
+  const values = sheet.getDataRange().getValues();
+  const searchName = (data.name || "").toString().trim().toLowerCase();
+  const searchCard = (data.idCard || "").toString().replace(/[-\s]/g, "");
+
+  let foundRow = -1;
+  for (let i = 1; i < values.length; i++) {
+    const rowName = values[i][7].toString().trim().toLowerCase(); // Column H (ชื่อพระ)
+    const rowCard = values[i][18].toString().replace(/[-\s]/g, ""); // Column S (เลขบัตรประชาชน)
+    if ((searchCard && rowCard === searchCard) || (searchName && rowName.indexOf(searchName) !== -1)) {
+      foundRow = i + 1;
+      break;
+    }
+  }
+
+  const now = Utilities.formatDate(new Date(), "Asia/Bangkok", "yyyy-MM-dd HH:mm:ss");
+
+  if (foundRow > 0) {
+    sheet.getRange(foundRow, 21).setValue("ลงทะเบียนแล้ว"); // Column U: สถานะลงทะเบียน
+    sheet.getRange(foundRow, 22).setValue(now);               // Column V: เวลาที่ลงทะเบียน
+    return { status: "success", message: "ลงทะเบียนพระสำเร็จ", registeredAt: now, row: foundRow };
+  } else {
+    // If not found in invited list, save to walkin
+    return registerWalkinMonk(ss, data);
+  }
+}
+
+/**
+ * ลงทะเบียนพระนอกรายชื่อ
+ */
+function registerWalkinMonk(ss, data) {
+  let sheet = ss.getSheetByName(SHEET_NAMES.WALKIN_MONKS);
+  if (!sheet) {
+    setupSheets(ss);
+    sheet = ss.getSheetByName(SHEET_NAMES.WALKIN_MONKS);
+  }
+
+  const now = Utilities.formatDate(new Date(), "Asia/Bangkok", "yyyy-MM-dd HH:mm:ss");
+  const newId = "WK" + Utilities.formatDate(new Date(), "Asia/Bangkok", "yyyyMMdd-HHmmss");
+
+  const row = [
+    data.id || newId,
+    data.idCard || "",
+    data.name || "",
+    data.temple || "",
+    data.vassa || 0,
+    data.province || "",
+    data.phone || "",
+    "ลงทะเบียนแล้ว",
+    now
+  ];
+
+  sheet.appendRow(row);
+  return { status: "success", id: data.id || newId, message: "บันทึกพระนอกรายชื่อสำเร็จ", registeredAt: now };
+}
+
+/**
+ * ลงทะเบียนญาติโยม
+ */
+function registerLayperson(ss, data) {
+  let sheet = ss.getSheetByName(SHEET_NAMES.LAYPEOPLE);
+  if (!sheet) {
+    setupSheets(ss);
+    sheet = ss.getSheetByName(SHEET_NAMES.LAYPEOPLE);
+  }
+
+  const now = Utilities.formatDate(new Date(), "Asia/Bangkok", "yyyy-MM-dd HH:mm:ss");
+  const newId = "LP" + Utilities.formatDate(new Date(), "Asia/Bangkok", "yyyyMMdd-HHmmss");
+
+  const row = [
+    data.id || newId,
+    data.idCard || "",
+    data.name || "",
+    data.birthday || "",
+    data.gender || "",
+    data.address || "",
+    data.phone || "",
+    data.emergencyPhone || "",
+    now
+  ];
+
+  sheet.appendRow(row);
+  return { status: "success", id: data.id || newId, message: "บันทึกข้อมูลญาติโยมสำเร็จ", registeredAt: now };
+}
+
+/**
+ * บันทึกการรับใบปวารณา
+ */
+function receiveSlip(ss, data) {
+  let sheet = ss.getSheetByName(SHEET_NAMES.SLIPS);
+  if (!sheet) {
+    setupSheets(ss);
+    sheet = ss.getSheetByName(SHEET_NAMES.SLIPS);
+  }
+
+  const now = Utilities.formatDate(new Date(), "Asia/Bangkok", "yyyy-MM-dd HH:mm:ss");
+  const txId = "TX" + Utilities.formatDate(new Date(), "Asia/Bangkok", "yyyyMMdd-HHmmss");
+
+  // จัดการรูปถ่าย (ถ้าส่ง Base64 มาจะบันทึกลงโฟลเดอร์ Google Drive)
+  let photoUrl = "";
+  if (data.photoBase64 && data.photoBase64.indexOf("data:image") !== -1) {
+    try {
+      photoUrl = savePhotoToDrive(data.photoBase64, txId + "_" + (data.receiverName || "receiver"));
+    } catch (e) {
+      photoUrl = "Error saving photo: " + e.toString();
+    }
+  } else if (data.photoUrl) {
+    photoUrl = data.photoUrl;
+  }
+
+  const row = [
+    txId,
+    data.monkId || "",
+    data.temple || "",
+    data.monkName || "",
+    data.vassa || 0,
+    data.amount || 5000,
+    data.receiverName || "",
+    data.receiverPhone || "",
+    "รับแล้ว",
+    now,
+    photoUrl
+  ];
+
+  sheet.appendRow(row);
+
+  // อัปเดตสถานะใน sheet พระสงฆ์ที่นิมนต์ให้เป็น "รับแล้ว" ด้วย
+  const monkSheet = ss.getSheetByName(SHEET_NAMES.INVITED_MONKS);
+  if (monkSheet && data.monkId) {
+    const values = monkSheet.getDataRange().getValues();
+    for (let i = 1; i < values.length; i++) {
+      if (values[i][0] == data.monkId) {
+        // สามารถเพิ่มคอลัมน์สถานะรับใบปวารณาได้
+        break;
+      }
+    }
+  }
+
+  return { status: "success", txId: txId, message: "บันทึกการรับใบปวารณาสำเร็จ", photoUrl: photoUrl, receivedAt: now };
+}
+
+/**
+ * บันทึกรูปถ่ายลง Google Drive
+ */
+function savePhotoToDrive(base64Data, filename) {
+  const folderName = "รูปถ่ายผู้รับใบปวารณา_งานวัด";
+  let folder;
+  const folders = DriveApp.getFoldersByName(folderName);
+  if (folders.hasNext()) {
+    folder = folders.next();
+  } else {
+    folder = DriveApp.createFolder(folderName);
+  }
+
+  const contentType = base64Data.substring(5, base64Data.indexOf(";"));
+  const bytes = Utilities.base64Decode(base64Data.substr(base64Data.indexOf("base64,") + 7));
+  const blob = Utilities.newBlob(bytes, contentType, filename + ".jpg");
+  const file = folder.createFile(blob);
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  return file.getUrl();
+}
+
+/**
+ * Helper แปลง Sheet เป็น Array of Objects
+ */
+function getSheetDataAsJson(ss, sheetName) {
+  const sheet = ss.getSheetByName(sheetName);
+  if (!sheet) return [];
+
+  const values = sheet.getDataRange().getValues();
+  if (values.length <= 1) return [];
+
+  const headers = values[0];
+  const list = [];
+
+  for (let i = 1; i < values.length; i++) {
+    const row = values[i];
+    const obj = {};
+    for (let j = 0; j < headers.length; j++) {
+      obj[headers[j]] = row[j];
+    }
+    list.push(obj);
+  }
+  return list;
+}

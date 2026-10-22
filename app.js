@@ -71,13 +71,20 @@ function initData() {
     const saved = savedMap[im.id];
     const monkNum = parseInt(im.id.replace("MK", "")) || 1;
     const realPhoto = `assets/monks/monk_row_${monkNum + 1}.jpg`;
+    if (saved) {
+      return {
+        ...im,
+        ...saved,
+        photo: realPhoto,
+        hotel: (saved.hotel && !saved.hotel.includes("สิรินธร")) ? saved.hotel : "",
+        amount: saved.amount || 0
+      };
+    }
     return {
       ...im,
       photo: realPhoto,
-      status: (saved && saved.status) ? saved.status : im.status,
-      registeredAt: (saved && saved.registeredAt) ? saved.registeredAt : im.registeredAt,
-      slipStatus: (saved && saved.slipStatus) ? saved.slipStatus : im.slipStatus,
-      receivedBy: (saved && saved.receivedBy) ? saved.receivedBy : im.receivedBy
+      hotel: (im.hotel && !im.hotel.includes("สิรินธร")) ? im.hotel : "",
+      amount: im.amount || 0
     };
   });
   saveLocal("TEMPLE_MONKS_DATA", state.monks);
@@ -614,9 +621,17 @@ function displayInvitedMonk(monk, fromHeldCard = false) {
   document.getElementById("infoMonkName").textContent = monk.name;
   document.getElementById("infoMonkTemple").textContent = monk.temple;
   document.getElementById("infoMonkProvince").textContent = `${monk.province} (${monk.branch || 'สาขากลาง'})`;
-  document.getElementById("infoMonkVassa").textContent = `${monk.vassa} พรรษา`;
-  document.getElementById("infoMonkHotel").textContent = monk.hotel || "กุฏิรับรองสงฆ์ อาคารเฉลิมพระเกียรติ";
-  document.getElementById("infoMonkSlipRight").textContent = monk.allowSlip ? `รับใบปวารณา (มีปัจจัย ${monk.amount.toLocaleString()} บาท)` : "ไม่มีปัจจัย";
+  document.getElementById("infoMonkHotel").textContent = monk.hotel ? monk.hotel : "ไม่มี (พักในวัด / กุฏิรับรองสงฆ์)";
+  
+  if (monk.allowSlip) {
+    if (monk.amount > 0) {
+      document.getElementById("infoMonkSlipRight").textContent = `รับใบปวารณา (มีปัจจัย ${monk.amount.toLocaleString()} บาท)`;
+    } else {
+      document.getElementById("infoMonkSlipRight").textContent = "รับใบปวารณา (ไม่มีระบุจำนวนปัจจัย)";
+    }
+  } else {
+    document.getElementById("infoMonkSlipRight").textContent = "ไม่มีสิทธิ์รับใบปวารณา (ไม่มีปัจจัย)";
+  }
 
   // 13-digit ID card field
   const idCardInput = document.getElementById("infoMonkIdCard");
@@ -1994,6 +2009,11 @@ async function fetchLiveDataFromSheet(notify = false) {
             const realPhoto = `assets/monks/monk_row_${monkNum + 1}.jpg`;
             const st = (m["สถานะลงทะเบียน"] || m.status || "").trim();
             const sl = (m["สถานะรับใบปวารณา"] || m.slipStatus || "").trim();
+            const rawHotel = (m["ที่พัก / โรงแรม"] !== undefined && m["ที่พัก / โรงแรม"] !== null) ? m["ที่พัก / โรงแรม"].toString().trim() : "";
+            const cleanHotel = (rawHotel === "#N/A") ? "" : rawHotel;
+            const rawSlip = (m["สิทธิ์รับใบปวารณา"] !== undefined && m["สิทธิ์รับใบปวารณา"] !== null) ? m["สิทธิ์รับใบปวารณา"].toString().trim() : "";
+            const isAllowSlip = rawSlip === "มีสิทธิ์";
+            const rawAmount = m["จำนวนปัจจัย"] ? parseInt(m["จำนวนปัจจัย"].toString().replace(/[^\d]/g, "")) : 0;
             return {
               id: m["รหัส"] || m.id,
               idCard: m["เลขบัตรประชาชน"] ? m["เลขบัตรประชาชน"].toString() : (m.idCard || ""),
@@ -2005,9 +2025,9 @@ async function fetchLiveDataFromSheet(notify = false) {
               province: m["จังหวัด"] || m.province,
               vassa: m["พรรษา"] || m.vassa || 0,
               phone: m["เบอร์โทรศัพท์"] || m.phone || "-",
-              hotel: m["ที่พัก / โรงแรม"] || m.hotel || "",
-              allowSlip: m["สิทธิ์รับใบปวารณา"] === "มีสิทธิ์" || m.allowSlip === true,
-              amount: m["จำนวนปัจจัย"] || m.amount || 5000,
+              hotel: cleanHotel,
+              allowSlip: isAllowSlip,
+              amount: rawAmount || 0,
               status: (st === "ลงทะเบียนแล้ว") ? "ลงทะเบียนแล้ว" : "ยังไม่ลงทะเบียน",
               slipStatus: (sl === "รับแล้ว") ? "รับแล้ว" : "ยังไม่ได้รับ",
               registeredAt: (st === "ลงทะเบียนแล้ว") ? (m["เวลาที่ลงทะเบียน"] || m.registeredAt || "") : ""
@@ -2015,6 +2035,22 @@ async function fetchLiveDataFromSheet(notify = false) {
           });
           saveLocal("TEMPLE_MONKS_DATA", state.monks);
           populateMonkQuickSelect();
+          renderMonkSelectTable();
+          renderSlipMonksTable();
+          renderReportTable();
+          updateAllKpis();
+
+          // อัปเดตหน้าจอข้อมูลพระที่เปิดค้างอยู่ทันทีให้ตรงกับข้อมูลล่าสุดจากชีต
+          if (state.currentSelectedMonk) {
+            const updated = state.monks.find(m => m.id === state.currentSelectedMonk.id);
+            if (updated) {
+              state.currentSelectedMonk = updated;
+              const invitedForm = document.getElementById("monkInvitedForm");
+              if (invitedForm && invitedForm.style.display !== "none") {
+                displayInvitedMonk(updated);
+              }
+            }
+          }
         }
       }
 

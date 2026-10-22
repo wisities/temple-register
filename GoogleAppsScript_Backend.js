@@ -757,6 +757,11 @@ function getSheetDataAsJson(ss, sheetName) {
     for (let j = 0; j < headers.length; j++) {
       obj[headers[j]] = row[j];
     }
+    // สำหรับชีตพระสงฆ์ที่นิมนต์: ดึงคอลัมน์ J (ที่พัก/โรงแรม) และคอลัมน์ K (สิทธิ์รับใบปวารณา) ให้แม่นยำ 100%
+    if (sheetName === SHEET_NAMES.INVITED_MONKS) {
+      obj["_colJ"] = (row[9] !== undefined && row[9] !== null) ? String(row[9]).trim() : "";
+      obj["_colK"] = (row[10] !== undefined && row[10] !== null) ? String(row[10]).trim() : "";
+    }
     list.push(obj);
   }
   return list;

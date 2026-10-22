@@ -76,15 +76,19 @@ function initData() {
         ...im,
         ...saved,
         photo: realPhoto,
-        hotel: (saved.hotel && !saved.hotel.includes("สิรินธร")) ? saved.hotel : "",
+        idCard: (saved.idCard && !saved.idCard.startsWith("1-0000-00000-")) ? saved.idCard : "",
+        hotel: (saved.hotel && !saved.hotel.includes("สิรินธร") && !saved.hotel.includes("ธรรมรุจ")) ? saved.hotel : "",
+        slipRight: saved.slipRight || "",
         amount: saved.amount || 0
       };
     }
     return {
       ...im,
       photo: realPhoto,
-      hotel: (im.hotel && !im.hotel.includes("สิรินธร")) ? im.hotel : "",
-      amount: im.amount || 0
+      idCard: "",
+      hotel: "",
+      slipRight: "",
+      amount: 0
     };
   });
   saveLocal("TEMPLE_MONKS_DATA", state.monks);
@@ -621,16 +625,27 @@ function displayInvitedMonk(monk, fromHeldCard = false) {
   document.getElementById("infoMonkName").textContent = monk.name;
   document.getElementById("infoMonkTemple").textContent = monk.temple;
   document.getElementById("infoMonkProvince").textContent = `${monk.province} (${monk.branch || 'สาขากลาง'})`;
-  document.getElementById("infoMonkHotel").textContent = monk.hotel ? monk.hotel : "ไม่มี (พักในวัด / กุฏิรับรองสงฆ์)";
-  
-  if (monk.allowSlip) {
-    if (monk.amount > 0) {
-      document.getElementById("infoMonkSlipRight").textContent = `รับใบปวารณา (มีปัจจัย ${monk.amount.toLocaleString()} บาท)`;
+  document.getElementById("infoMonkVassa").textContent = `${monk.vassa} พรรษา`;
+
+  // ที่พัก / โรงแรม: ดึงข้อความตามคอลัมน์ J ตรงๆ (ถ้าช่องนั้นว่าง ก็ว่างไว้ ไม่ต้องเอาอะไรมาแสดง)
+  const hotelElem = document.getElementById("infoMonkHotel");
+  const hotelVal = (monk.hotel || "").toString().trim();
+  if (hotelElem) {
+    hotelElem.textContent = hotelVal;
+    if (hotelVal) {
+      hotelElem.classList.add("highlight-room");
     } else {
-      document.getElementById("infoMonkSlipRight").textContent = "รับใบปวารณา (ไม่มีระบุจำนวนปัจจัย)";
+      hotelElem.classList.remove("highlight-room");
     }
-  } else {
-    document.getElementById("infoMonkSlipRight").textContent = "ไม่มีสิทธิ์รับใบปวารณา (ไม่มีปัจจัย)";
+  }
+
+  // สิทธิ์รับใบปวารณา: ดึงข้อความตามคอลัมน์ K ตรงๆ (ถ้าช่องนั้นว่าง ก็ว่างไว้ ไม่ต้องเอาอะไรมาแสดง)
+  const slipElem = document.getElementById("infoMonkSlipRight");
+  const slipVal = (monk.slipRight !== undefined && monk.slipRight !== null)
+    ? monk.slipRight.toString().trim()
+    : (monk["สิทธิ์รับใบปวารณา"] || "").toString().trim();
+  if (slipElem) {
+    slipElem.textContent = slipVal;
   }
 
   // 13-digit ID card field
@@ -2007,12 +2022,17 @@ async function fetchLiveDataFromSheet(notify = false) {
           state.monks = json.monks.map((m, idx) => {
             const monkNum = parseInt((m.id || m["รหัส"] || "").replace("MK", "")) || (idx + 1);
             const realPhoto = `assets/monks/monk_row_${monkNum + 1}.jpg`;
-            const st = (m["สถานะลงทะเบียน"] || m.status || "").trim();
-            const sl = (m["สถานะรับใบปวารณา"] || m.slipStatus || "").trim();
-            const rawHotel = (m["ที่พัก / โรงแรม"] !== undefined && m["ที่พัก / โรงแรม"] !== null) ? m["ที่พัก / โรงแรม"].toString().trim() : "";
-            const cleanHotel = (rawHotel === "#N/A") ? "" : rawHotel;
-            const rawSlip = (m["สิทธิ์รับใบปวารณา"] !== undefined && m["สิทธิ์รับใบปวารณา"] !== null) ? m["สิทธิ์รับใบปวารณา"].toString().trim() : "";
-            const isAllowSlip = rawSlip === "มีสิทธิ์";
+            // ดึงข้อความตามคอลัมน์ J (ที่พัก / โรงแรม): ถ้าช่องนั้นว่าง ก็ว่างไว้
+            const rawColJ = (m._colJ !== undefined && m._colJ !== null) ? m._colJ : m["ที่พัก / โรงแรม"];
+            const rawHotel = (rawColJ !== undefined && rawColJ !== null) ? rawColJ.toString().trim() : "";
+            const cleanHotel = (rawHotel === "#N/A" || rawHotel.toLowerCase() === "null") ? "" : rawHotel;
+
+            // ดึงข้อความตามคอลัมน์ K (สิทธิ์รับใบปวารณา): ถ้าช่องนั้นว่าง ก็ว่างไว้
+            const rawColK = (m._colK !== undefined && m._colK !== null) ? m._colK : m["สิทธิ์รับใบปวารณา"];
+            const rawSlip = (rawColK !== undefined && rawColK !== null) ? rawColK.toString().trim() : "";
+            const cleanSlip = (rawSlip === "#N/A" || rawSlip.toLowerCase() === "null") ? "" : rawSlip;
+
+            const isAllowSlip = cleanSlip.includes("มีสิทธิ์") || cleanSlip.includes("รับ");
             const rawAmount = m["จำนวนปัจจัย"] ? parseInt(m["จำนวนปัจจัย"].toString().replace(/[^\d]/g, "")) : 0;
             return {
               id: m["รหัส"] || m.id,
@@ -2026,6 +2046,7 @@ async function fetchLiveDataFromSheet(notify = false) {
               vassa: m["พรรษา"] || m.vassa || 0,
               phone: m["เบอร์โทรศัพท์"] || m.phone || "-",
               hotel: cleanHotel,
+              slipRight: cleanSlip,
               allowSlip: isAllowSlip,
               amount: rawAmount || 0,
               status: (st === "ลงทะเบียนแล้ว") ? "ลงทะเบียนแล้ว" : "ยังไม่ลงทะเบียน",

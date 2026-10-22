@@ -53,18 +53,31 @@ document.addEventListener("DOMContentLoaded", () => {
  * --------------------------------------------------------------------------
  */
 function initData() {
-  // Load initial monks from monks_data.js or localStorage
+  // Always prioritize clean data from monks_data.js and merge registration statuses
+  const initialList = window.INITIAL_MONKS_DATA || [];
   const savedMonks = localStorage.getItem("TEMPLE_MONKS_DATA");
+  let savedMap = {};
   if (savedMonks) {
     try {
-      state.monks = JSON.parse(savedMonks);
-    } catch (e) {
-      state.monks = window.INITIAL_MONKS_DATA || [];
-    }
-  } else {
-    state.monks = window.INITIAL_MONKS_DATA || [];
-    saveLocal("TEMPLE_MONKS_DATA", state.monks);
+      const arr = JSON.parse(savedMonks);
+      arr.forEach(sm => { if (sm && sm.id) savedMap[sm.id] = sm; });
+    } catch (e) {}
   }
+
+  state.monks = initialList.map(im => {
+    const saved = savedMap[im.id];
+    const monkNum = parseInt(im.id.replace("MK", "")) || 1;
+    const realPhoto = `assets/monks/monk_row_${monkNum + 1}.jpg`;
+    return {
+      ...im,
+      photo: realPhoto,
+      status: (saved && saved.status) ? saved.status : im.status,
+      registeredAt: (saved && saved.registeredAt) ? saved.registeredAt : im.registeredAt,
+      slipStatus: (saved && saved.slipStatus) ? saved.slipStatus : im.slipStatus,
+      receivedBy: (saved && saved.receivedBy) ? saved.receivedBy : im.receivedBy
+    };
+  });
+  saveLocal("TEMPLE_MONKS_DATA", state.monks);
 
   // Load walkin monks
   const savedWalkin = localStorage.getItem("TEMPLE_WALKIN_DATA");
@@ -258,7 +271,14 @@ function displayInvitedMonk(monk) {
   }
 
   const photoElem = document.getElementById("infoMonkPhoto");
-  if (photoElem) photoElem.src = monk.photo || "assets/monk_avatar.jpg";
+  if (photoElem) {
+    const monkNum = parseInt((monk.id || "").replace("MK", "")) || 1;
+    const realPhoto = `assets/monks/monk_row_${monkNum + 1}.jpg`;
+    photoElem.src = (monk.photo && !monk.photo.includes("monk_avatar.jpg")) ? monk.photo : realPhoto;
+    photoElem.onerror = () => {
+      photoElem.src = "assets/monk_avatar.jpg";
+    };
+  }
 
   document.getElementById("infoMonkName").textContent = monk.name;
   document.getElementById("infoMonkTemple").textContent = monk.temple;
@@ -1097,23 +1117,28 @@ async function fetchLiveDataFromSheet() {
         // ตรวจสอบว่าข้อมูลใน Google Sheet ไม่ใช่เครื่องหมายคำถาม ?????
         const sampleName = json.monks[0]["ชื่อ / ฉายา"] || json.monks[0].name || "";
         if (!sampleName.includes("???")) {
-          state.monks = json.monks.map(m => ({
-            id: m["รหัส"] || m.id,
-            idCard: m["เลขบัตรประชาชน"] ? m["เลขบัตรประชาชน"].toString() : (m.idCard || ""),
-            name: m["ชื่อ / ฉายา"] || m.name,
-            branch: m["ลำดับสาขา"] || m.branch,
-            temple: m["ชื่อวัด"] || m.temple,
-            district: m["อำเภอ"] || m.district,
-            province: m["จังหวัด"] || m.province,
-            vassa: m["พรรษา"] || m.vassa || 0,
-            phone: m["เบอร์โทรศัพท์"] || m.phone || "-",
-            hotel: m["ที่พัก / โรงแรม"] || m.hotel || "",
-            allowSlip: m["สิทธิ์รับใบปวารณา"] === "มีสิทธิ์" || m.allowSlip === true,
-            amount: m["จำนวนปัจจัย"] || m.amount || 5000,
-            status: m["สถานะลงทะเบียน"] || m.status || "ยังไม่ลงทะเบียน",
-            slipStatus: m["สถานะรับใบปวารณา"] || m.slipStatus || "ยังไม่ได้รับ",
-            registeredAt: m["เวลาที่ลงทะเบียน"] || m.registeredAt || ""
-          }));
+          state.monks = json.monks.map((m, idx) => {
+            const monkNum = parseInt((m.id || m["รหัส"] || "").replace("MK", "")) || (idx + 1);
+            const realPhoto = `assets/monks/monk_row_${monkNum + 1}.jpg`;
+            return {
+              id: m["รหัส"] || m.id,
+              idCard: m["เลขบัตรประชาชน"] ? m["เลขบัตรประชาชน"].toString() : (m.idCard || ""),
+              photo: realPhoto,
+              name: m["ชื่อ / ฉายา"] || m.name,
+              branch: m["ลำดับสาขา"] || m.branch,
+              temple: m["ชื่อวัด"] || m.temple,
+              district: m["อำเภอ"] || m.district,
+              province: m["จังหวัด"] || m.province,
+              vassa: m["พรรษา"] || m.vassa || 0,
+              phone: m["เบอร์โทรศัพท์"] || m.phone || "-",
+              hotel: m["ที่พัก / โรงแรม"] || m.hotel || "",
+              allowSlip: m["สิทธิ์รับใบปวารณา"] === "มีสิทธิ์" || m.allowSlip === true,
+              amount: m["จำนวนปัจจัย"] || m.amount || 5000,
+              status: m["สถานะลงทะเบียน"] || m.status || "ยังไม่ลงทะเบียน",
+              slipStatus: m["สถานะรับใบปวารณา"] || m.slipStatus || "ยังไม่ได้รับ",
+              registeredAt: m["เวลาที่ลงทะเบียน"] || m.registeredAt || ""
+            };
+          });
           saveLocal("TEMPLE_MONKS_DATA", state.monks);
           populateMonkQuickSelect();
         } else {

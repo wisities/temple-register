@@ -710,13 +710,31 @@ function receiveSlip(ss, data) {
     photoUrl = data.photoUrl;
   }
 
+  // ตรวจสอบว่าพระสงฆ์มีสิทธิ์รับใบปวารณาตามคอลัมน์ K หรือไม่
+  const monkSheet = ss.getSheetByName(SHEET_NAMES.INVITED_MONKS);
+  if (monkSheet && data.monkId) {
+    const values = monkSheet.getDataRange().getValues();
+    for (let i = 1; i < values.length; i++) {
+      if (String(values[i][0]).toLowerCase() === String(data.monkId).toLowerCase()) {
+        const colKVal = String(values[i][10] || "").trim();
+        if (!colKVal.includes("มีสิทธิ์")) {
+          return {
+            status: "error",
+            message: "พระสงฆ์รูปนี้ไม่มีสิทธิ์รับใบปวารณาตามคอลัมน์ K (เฉพาะผู้แทนของพระผู้มีสิทธิ์เท่านั้น)"
+          };
+        }
+        break;
+      }
+    }
+  }
+
   const row = [
     txId,
     data.monkId || "",
     data.temple || "",
     data.monkName || "",
     data.vassa || 0,
-    data.amount || 5000,
+    data.amount || 0,
     data.receiverName || "",
     data.receiverPhone || "",
     "รับแล้ว",

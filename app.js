@@ -1443,8 +1443,11 @@ function renderSlipMonksTable() {
   const branchFilter = (document.getElementById("slipSearchBranch")?.value || "").toLowerCase().trim();
   const templeFilter = (document.getElementById("slipSearchTemple")?.value || "").toLowerCase().trim();
 
-  // Filter monks: prioritize registered or match search
+  // กรองเฉพาะผู้แทนของพระสงฆ์ที่มีสิทธิ์ตามคอลัมน์ K เท่านั้น
   const filtered = state.monks.filter(m => {
+    const isEligible = (m.slipRight && m.slipRight.includes("มีสิทธิ์")) || m.allowSlip || ((m._colK || "").includes("มีสิทธิ์"));
+    if (!isEligible) return false;
+
     const mName = (m.name || "").toLowerCase();
     const mBranch = (m.branch || "").toLowerCase();
     const mTemple = (m.temple || "").toLowerCase();
@@ -1459,7 +1462,7 @@ function renderSlipMonksTable() {
   const displayList = filtered.slice(0, 50); // display top 50 matches
 
   if (displayList.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#94a3b8; padding: 1.5rem;">ไม่พบข้อมูลพระสงฆ์ตามเงื่อนไขการค้นหา</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#94a3b8; padding: 1.5rem;">ไม่พบข้อมูลพระสงฆ์ผู้มีสิทธิ์ตามคอลัมน์ K ตามเงื่อนไขการค้นหา</td></tr>`;
     return;
   }
 
@@ -1479,6 +1482,7 @@ function renderSlipMonksTable() {
       <td style="font-weight: 600; color: #166534;">${m.name}</td>
       <td>${m.temple}</td>
       <td>${m.vassa}</td>
+      <td><span style="font-size:0.75rem; color:#166534; font-weight:600; background:#ecfdf5; padding:0.15rem 0.45rem; border-radius:4px; border:1px solid #bbf7d0;">✓ มีสิทธิ์</span></td>
       <td>${statusHtml}</td>
     `;
 
@@ -1491,25 +1495,29 @@ function renderSlipMonksTable() {
 }
 
 function selectMonkForSlip(monk) {
+  const isEligible = (monk.slipRight && monk.slipRight.includes("มีสิทธิ์")) || monk.allowSlip || ((monk._colK || "").includes("มีสิทธิ์"));
+  if (!isEligible) {
+    showToast(`⚠️ พระสงฆ์รูปนี้ไม่มีสิทธิ์รับใบปวารณาตามคอลัมน์ K (เฉพาะผู้แทนของพระผู้มีสิทธิ์เท่านั้น)`, "warning");
+    return;
+  }
+
   state.currentSlipMonk = monk;
   renderSlipMonksTable();
 
   document.getElementById("slipRecTemple").value = monk.temple;
   document.getElementById("slipRecMonkName").value = monk.name;
-  document.getElementById("slipRecAmount").value = monk.amount || 5000;
+  document.getElementById("slipRecAmount").value = (monk.amount && monk.amount > 0) ? monk.amount : "";
 
-  // Pre-fill receiver with default or previous registered layperson name
-  if (state.laypeople.length > 0 && !document.getElementById("slipRecReceiverName").value) {
-    document.getElementById("slipRecReceiverName").value = state.laypeople[0].name;
-    document.getElementById("slipRecReceiverPhone").value = state.laypeople[0].phone;
-  } else if (!document.getElementById("slipRecReceiverName").value) {
-    document.getElementById("slipRecReceiverName").value = "นายสมชาย ใจดี";
-  }
+  // ล้างค่าชื่อผู้รับ เพื่อให้กรอกตามจริง (ไม่ใส่ชื่อจำลอง)
+  const recNameInput = document.getElementById("slipRecReceiverName");
+  const recPhoneInput = document.getElementById("slipRecReceiverPhone");
+  if (recNameInput) recNameInput.value = "";
+  if (recPhoneInput) recPhoneInput.value = "";
 
   document.getElementById("slipSelectedBadge").textContent = monk.slipStatus === "รับแล้ว" ? "รับแล้ว (เบิกซ้ำได้)" : "พร้อมทำรายการรับ";
   document.getElementById("slipSelectedBadge").className = monk.slipStatus === "รับแล้ว" ? "status-badge registered" : "status-badge available";
 
-  showToast(`เลือกพระเถระ: ${monk.name}`, "success");
+  showToast(`เลือกพระเถระผู้มีสิทธิ์: ${monk.name}`, "success");
 }
 
 function clearSlipSearch() {
@@ -1582,13 +1590,19 @@ function snapPhoto() {
 
 function confirmSlipReceive() {
   if (!state.currentSlipMonk) {
-    showToast("กรุณาเลือกพระเถระจากตาราง 3.2 ก่อน", "warning");
+    showToast("กรุณาเลือกพระเถระผู้มีสิทธิ์จากตาราง 3.2 ก่อน", "warning");
+    return;
+  }
+
+  const isEligible = (state.currentSlipMonk.slipRight && state.currentSlipMonk.slipRight.includes("มีสิทธิ์")) || state.currentSlipMonk.allowSlip || ((state.currentSlipMonk._colK || "").includes("มีสิทธิ์"));
+  if (!isEligible) {
+    showToast("⚠️ ไม่สามารถทำรายการได้: พระสงฆ์รูปนี้ไม่มีสิทธิ์รับใบปวารณาตามคอลัมน์ K", "error");
     return;
   }
 
   const receiverName = document.getElementById("slipRecReceiverName").value.trim();
   const receiverPhone = document.getElementById("slipRecReceiverPhone").value.trim();
-  const amount = parseInt(document.getElementById("slipRecAmount").value) || 5000;
+  const amount = parseInt(document.getElementById("slipRecAmount").value) || 0;
 
   if (!receiverName) {
     showToast("กรุณาระบุชื่อผู้มารับเงินแทน / ผู้รับมอบฉันทะ", "warning");
@@ -1843,7 +1857,7 @@ function renderReportTable() {
         <td><code>${s.txId}</code></td>
         <td style="font-weight:600;">${s.monkName}</td>
         <td>${s.temple}</td>
-        <td style="font-weight:700; color:#166534;">${(s.amount || 5000).toLocaleString()} บาท</td>
+        <td style="font-weight:700; color:#166534;">${(s.amount && s.amount > 0) ? `${s.amount.toLocaleString()} บาท` : "-"}</td>
         <td>${s.receiverName}</td>
         <td>${s.receiverPhone}</td>
         <td>${s.receivedAt}</td>

@@ -84,6 +84,16 @@ function doGet(e) {
  */
 function doPost(e) {
   let result = {};
+  const lock = LockService.getScriptLock();
+
+  // ล็อคคิวเพื่อรองรับการใช้งานพร้อมกันหลายจุด (Multi-user concurrency) รอคิวได้สูงสุด 30 วินาที
+  const hasLock = lock.tryLock(30000);
+  if (!hasLock) {
+    return ContentService.createTextOutput(JSON.stringify({
+      status: "error",
+      message: "ระบบกำลังบันทึกข้อมูลจากเครื่องอื่นอยู่ กรุณากดบันทึกอีกครั้ง"
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
 
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -133,6 +143,8 @@ function doPost(e) {
 
   } catch (error) {
     result = { status: "error", message: error.toString() };
+  } finally {
+    lock.releaseLock();
   }
 
   return ContentService.createTextOutput(JSON.stringify(result))

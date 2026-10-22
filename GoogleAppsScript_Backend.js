@@ -56,6 +56,9 @@ function doGet(e) {
       result = { status: "success", data: getSheetDataAsJson(ss, SHEET_NAMES.LAYPEOPLE) };
     } else if (action === "get_slips") {
       result = { status: "success", data: getSheetDataAsJson(ss, SHEET_NAMES.SLIPS) };
+    } else if (action === "check_id_card") {
+      const idCard = (e.parameter.idCard || "").toString().replace(/[-\s]/g, "");
+      result = checkIdAcrossAllSheets(ss, idCard);
     } else if (action === "setup") {
       setupSheets(ss);
       result = { status: "success", message: "Setup sheets successfully" };
@@ -467,4 +470,58 @@ function getSheetDataAsJson(ss, sheetName) {
     list.push(obj);
   }
   return list;
+}
+
+/**
+ * ตรวจสอบเลขประจำตัวประชาชนในทุกคอลัมน์ของทุกแผ่นงานใน Google Sheets
+ */
+function checkIdAcrossAllSheets(ss, idCard) {
+  if (!idCard) return { status: "not_found", message: "ไม่ระบุเลขบัตร" };
+  const cleanId = idCard.toString().replace(/[-\s]/g, "");
+  const sheets = ss.getSheets();
+  const matches = [];
+
+  for (let s = 0; s < sheets.length; s++) {
+    const sheet = sheets[s];
+    const sheetName = sheet.getName();
+    const data = sheet.getDataRange().getValues();
+    if (data.length <= 1) continue;
+
+    const headers = data[0];
+
+    for (let r = 1; r < data.length; r++) {
+      const row = data[r];
+      for (let c = 0; c < row.length; c++) {
+        const cellVal = (row[c] || "").toString().replace(/[-\s]/g, "");
+        if (cellVal && cellVal === cleanId) {
+          const rowObj = {};
+          for (let h = 0; h < headers.length; h++) {
+            rowObj[headers[h]] = row[h];
+          }
+          matches.push({
+            sheetName: sheetName,
+            rowIndex: r + 1,
+            matchedColumn: headers[c] || ("คอลัมน์ที่ " + (c + 1)),
+            data: rowObj
+          });
+          break; // ตรวจแถวถัดไป
+        }
+      }
+    }
+  }
+
+  if (matches.length > 0) {
+    return {
+      status: "found",
+      cleanId: cleanId,
+      matches: matches,
+      primaryMatch: matches[0]
+    };
+  } else {
+    return {
+      status: "not_found",
+      cleanId: cleanId,
+      message: "ไม่พบเลขบัตรนี้ในทุกคอลัมน์ของทุกชีต"
+    };
+  }
 }

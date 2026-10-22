@@ -338,59 +338,198 @@ function setupMonkWorkflow() {
   renderMonkSelectTable();
 }
 
+/**
+ * ตรวจสอบเลขประจำตัวประชาชนในทุกคอลัมน์ของทุกแท็บชีต
+ * 1. พระสงฆ์ที่นิมนต์
+ * 2. ลงทะเบียนพระนอกรายชื่อ
+ * 3. ลงทะเบียนญาติโยม
+ * 4. รับใบปวารณา
+ */
+function checkCitizenIdAcrossAllTabs(rawIdCard) {
+  if (!rawIdCard) return null;
+  const cleanId = rawIdCard.toString().replace(/[-\s]/g, "").trim().toLowerCase();
+  if (cleanId.length < 5) return null;
+
+  // 1. ตรวจในชีต "พระสงฆ์ที่นิมนต์" (ทุกฟิลด์/ทุกคอลัมน์)
+  for (const m of state.monks) {
+    for (const key of Object.keys(m)) {
+      const val = (m[key] || "").toString().replace(/[-\s]/g, "").trim().toLowerCase();
+      if (val && (val === cleanId || (cleanId.length >= 10 && val.includes(cleanId)))) {
+        return {
+          found: true,
+          sheetType: "monks",
+          sheetName: "พระสงฆ์ที่นิมนต์",
+          matchedField: key,
+          entity: m,
+          name: m.name,
+          temple: m.temple,
+          status: m.status,
+          registeredAt: m.registeredAt
+        };
+      }
+    }
+  }
+
+  // 2. ตรวจในชีต "ลงทะเบียนพระนอกรายชื่อ" (ทุกฟิลด์/ทุกคอลัมน์)
+  for (const w of state.walkinMonks) {
+    for (const key of Object.keys(w)) {
+      const val = (w[key] || "").toString().replace(/[-\s]/g, "").trim().toLowerCase();
+      if (val && (val === cleanId || (cleanId.length >= 10 && val.includes(cleanId)))) {
+        return {
+          found: true,
+          sheetType: "walkin",
+          sheetName: "ลงทะเบียนพระนอกรายชื่อ",
+          matchedField: key,
+          entity: w,
+          name: w.name,
+          temple: w.temple,
+          status: w.status,
+          registeredAt: w.registeredAt
+        };
+      }
+    }
+  }
+
+  // 3. ตรวจในชีต "ลงทะเบียนญาติโยม" (ทุกฟิลด์/ทุกคอลัมน์)
+  for (const l of state.laypeople) {
+    for (const key of Object.keys(l)) {
+      const val = (l[key] || "").toString().replace(/[-\s]/g, "").trim().toLowerCase();
+      if (val && (val === cleanId || (cleanId.length >= 10 && val.includes(cleanId)))) {
+        return {
+          found: true,
+          sheetType: "lay",
+          sheetName: "ลงทะเบียนญาติโยม",
+          matchedField: key,
+          entity: l,
+          name: l.name,
+          address: l.address,
+          phone: l.phone,
+          status: "ลงทะเบียนแล้ว",
+          registeredAt: l.registeredAt
+        };
+      }
+    }
+  }
+
+  // 4. ตรวจในชีต "รับใบปวารณา" (ทุกฟิลด์/ทุกคอลัมน์)
+  for (const s of state.slips) {
+    for (const key of Object.keys(s)) {
+      const val = (s[key] || "").toString().replace(/[-\s]/g, "").trim().toLowerCase();
+      if (val && (val === cleanId || (cleanId.length >= 10 && val.includes(cleanId)))) {
+        return {
+          found: true,
+          sheetType: "slips",
+          sheetName: "รับใบปวารณา",
+          matchedField: key,
+          entity: s,
+          name: s.receiverName || s.monkName,
+          temple: s.temple,
+          status: s.status,
+          registeredAt: s.receivedAt
+        };
+      }
+    }
+  }
+
+  return { found: false, cleanId: cleanId };
+}
+
 function triggerMonkScan(searchTerm) {
   const cleanTerm = searchTerm.replace(/[-\s]/g, "").toLowerCase();
   const heldNotice = document.getElementById("monkCardHeldNotice");
   const heldNum = document.getElementById("heldCardNumber");
   const placeholder = document.getElementById("monkDetailPlaceholder");
 
-  // Search in invited monks:
-  // 1. Match by clean ID Card
-  // 2. Or match by monk name
-  // 3. Or match by MK ID
-  const found = state.monks.find(m => {
-    const mCard = (m.idCard || "").replace(/[-\s]/g, "").toLowerCase();
+  // 1. ตรวจสอบเลขบัตรประชาชนในทุกคอลัมน์และทุกแท็บชีต
+  const crossMatch = checkCitizenIdAcrossAllTabs(searchTerm);
+
+  if (crossMatch && crossMatch.found) {
+    if (crossMatch.sheetType === "monks") {
+      // พบในชีต "พระสงฆ์ที่นิมนต์"
+      const monk = crossMatch.entity;
+      if (searchTerm.replace(/[-\s]/g, "").length >= 10) {
+        monk.idCard = searchTerm.trim();
+      }
+      if (heldNotice) heldNotice.style.display = "none";
+      displayInvitedMonk(monk, true);
+      renderMonkSelectTable();
+
+      if (monk.status === "ลงทะเบียนแล้ว") {
+        showToast(`⚠️ ตรวจพบในชีต 'พระสงฆ์ที่นิมนต์' (ลงทะเบียนแล้ว): ${monk.name} (${monk.registeredAt})`, "warning");
+      } else {
+        showToast(`✓ ตรวจพบในชีต 'พระสงฆ์ที่นิมนต์': ${monk.name} วัด ${monk.temple}`, "success");
+      }
+      return;
+    } 
+    else if (crossMatch.sheetType === "walkin") {
+      // พบในชีต "ลงทะเบียนพระนอกรายชื่อ" แล้ว!
+      const w = crossMatch.entity;
+      if (heldNotice) heldNotice.style.display = "none";
+      displayWalkinMonkForm(w.idCard || searchTerm);
+      // Pre-fill existing walk-in info
+      if (document.getElementById("walkinName")) document.getElementById("walkinName").value = w.name || "";
+      if (document.getElementById("walkinTemple")) document.getElementById("walkinTemple").value = w.temple || "";
+      if (document.getElementById("walkinVassa")) document.getElementById("walkinVassa").value = w.vassa || "";
+      if (document.getElementById("walkinProvince")) document.getElementById("walkinProvince").value = w.province || "";
+      if (document.getElementById("walkinPhone")) document.getElementById("walkinPhone").value = w.phone || "";
+      
+      showToast(`⚠️ ตรวจพบเลขบัตรนี้เคยลงทะเบียนในชีต 'พระนอกรายชื่อ' แล้ว: ${w.name} วัด ${w.temple} (${w.registeredAt})`, "warning");
+      return;
+    }
+    else if (crossMatch.sheetType === "lay") {
+      // พบในชีต "ลงทะเบียนญาติโยม"
+      const l = crossMatch.entity;
+      if (placeholder) placeholder.style.display = "none";
+      document.getElementById("monkInvitedForm").style.display = "none";
+      document.getElementById("monkWalkinForm").style.display = "none";
+
+      if (heldNotice && heldNum) {
+        heldNum.innerHTML = `${searchTerm} <br><span style="color:#dc2626; font-weight:600;">(⚠️ ตรวจพบเลขบัตรนี้เคยลงทะเบียนอยู่ในแท็บชีต "ลงทะเบียนญาติโยม": ${l.name} เบอร์ ${l.phone} เมื่อ ${l.registeredAt})</span>`;
+        heldNotice.style.display = "block";
+      }
+
+      showToast(`⚠️ ตรวจพบเลขบัตรนี้เคยลงทะเบียนในแท็บ 'ญาติโยม' แล้ว: คุณ ${l.name}`, "warning");
+      return;
+    }
+  }
+
+  // 2. หากยังไม่พบด้วยเลขบัตร ให้ลองค้นหาด้วยชื่อพระ หรือชื่อวัดในรายนามนิมนต์
+  const foundByName = state.monks.find(m => {
     const mName = (m.name || "").toLowerCase();
     const mTemple = (m.temple || "").toLowerCase();
-    return (
-      (mCard && mCard === cleanTerm) ||
-      m.id.toLowerCase() === cleanTerm ||
-      (mName && mName.includes(cleanTerm)) ||
-      (mTemple && mTemple.includes(cleanTerm))
-    );
+    return m.id.toLowerCase() === cleanTerm || mName.includes(cleanTerm) || mTemple.includes(cleanTerm);
   });
 
-  if (found) {
-    // If the input was a card number, make sure it's bound to this monk
+  if (foundByName) {
     if (searchTerm.replace(/[-\s]/g, "").length >= 10) {
-      found.idCard = searchTerm.trim();
+      foundByName.idCard = searchTerm.trim();
     }
     if (heldNotice) heldNotice.style.display = "none";
-    displayInvitedMonk(found, true);
-    showToast(`พบรายนามพระสงฆ์: ${found.name}`, "success");
+    displayInvitedMonk(foundByName, true);
+    showToast(`พบรายนามพระสงฆ์: ${foundByName.name}`, "success");
     renderMonkSelectTable();
-  } else {
-    // Not found in database directly by this card or search term
-    // Keep the card number held in buffer and prompt user to search/select from table
-    if (placeholder) placeholder.style.display = "none";
-    document.getElementById("monkInvitedForm").style.display = "none";
-    document.getElementById("monkWalkinForm").style.display = "none";
+    return;
+  }
 
-    if (heldNotice && heldNum) {
-      heldNum.textContent = searchTerm;
-      heldNotice.style.display = "block";
-    }
+  // 3. ไม่พบในทุกคอลัมน์ของทุกแท็บชีตเลย -> เก็บเลขบัตรไว้ใน buffer และให้ผู้ใช้ค้นหาเพื่อผูก หรือลงทะเบียนนอกรายชื่อ
+  if (placeholder) placeholder.style.display = "none";
+  document.getElementById("monkInvitedForm").style.display = "none";
+  document.getElementById("monkWalkinForm").style.display = "none";
 
-    showToast(`เสียบบัตรประชาชน (${searchTerm}) คาไว้แล้ว: กรุณาค้นหาหรือเลือกชื่อพระจากตารางด้านซ้าย เพื่อผูกเลขบัตรนี้`, "warning");
+  if (heldNotice && heldNum) {
+    heldNum.innerHTML = `${searchTerm} <span style="color:#059669; font-weight:normal;">(ตรวจสอบทุกชีตแล้ว: ยังไม่เคยลงทะเบียนในระบบ)</span>`;
+    heldNotice.style.display = "block";
+  }
 
-    // Also auto-filter the table if the search term wasn't purely digits
-    if (isNaN(cleanTerm)) {
-      const fName = document.getElementById("monkFilterName");
-      if (fName) {
-        fName.value = searchTerm;
-        monkFilterState.name = searchTerm;
-        renderMonkSelectTable();
-      }
+  showToast(`ตรวจสอบทุกแท็บชีตแล้ว: เลขบัตร ${searchTerm} ยังไม่เคยลงทะเบียน ท่านสามารถค้นหาชื่อพระเพื่อผูก หรือลงทะเบียนพระนอกรายชื่อได้`, "info");
+
+  // Also auto-filter the table if search term wasn't purely digits
+  if (isNaN(cleanTerm)) {
+    const fName = document.getElementById("monkFilterName");
+    if (fName) {
+      fName.value = searchTerm;
+      monkFilterState.name = searchTerm;
+      renderMonkSelectTable();
     }
   }
 }
@@ -626,8 +765,30 @@ function setupLayWorkflow() {
     document.getElementById("layPhone").value = p.phone;
     document.getElementById("layEmergencyPhone").value = p.emergencyPhone;
 
-    showToast(`อ่านข้อมูลจากบัตรประชาชน: ${p.name}`, "success");
+    // ตรวจสอบเลขประชาชนในทุกแท็บชีต
+    const cross = checkCitizenIdAcrossAllTabs(p.idCard);
+    if (cross && cross.found) {
+      if (cross.sheetType === "lay") {
+        showToast(`⚠️ เลขบัตร ${p.idCard} เคยลงทะเบียนญาติโยมแล้ว: คุณ ${cross.name} (${cross.registeredAt})`, "warning");
+      } else {
+        showToast(`⚠️ ตรวจพบเลขบัตรนี้ในชีต '${cross.sheetName}': ${cross.name} (${cross.temple || '-'})`, "warning");
+      }
+    } else {
+      showToast(`อ่านข้อมูลจากบัตรประชาชน: ${p.name}`, "success");
+    }
   });
+
+  const inputManual = document.getElementById("layIdCardManual");
+  if (inputManual) {
+    inputManual.addEventListener("change", (e) => {
+      const val = e.target.value.trim();
+      if (!val) return;
+      const cross = checkCitizenIdAcrossAllTabs(val);
+      if (cross && cross.found) {
+        showToast(`⚠️ ตรวจพบเลขบัตรในชีต '${cross.sheetName}': ${cross.name}`, "warning");
+      }
+    });
+  }
 
   document.getElementById("btnConfirmLayRegistration").addEventListener("click", () => {
     confirmLayRegistration();
@@ -646,6 +807,13 @@ function confirmLayRegistration() {
   if (!name || !idCard) {
     showToast("กรุณากรอกชื่อและเลขบัตรประชาชนญาติโยม", "warning");
     return;
+  }
+
+  // ป้องกันการลงทะเบียนซ้ำ
+  const cross = checkCitizenIdAcrossAllTabs(idCard);
+  if (cross && cross.found && cross.sheetType === "lay") {
+    const proceed = confirm(`เลขบัตรประชาชน ${idCard} เคยลงทะเบียนในชีต 'ญาติโยม' แล้ว (คุณ ${cross.name})\nต้องการบันทึกซ้ำหรือไม่?`);
+    if (!proceed) return;
   }
 
   const now = new Date().toLocaleString("th-TH");

@@ -1002,61 +1002,128 @@ const SAMPLE_LAYPEOPLE = [
 ];
 let sampleLayIndex = 0;
 
-function setupLayWorkflow() {
-  // ฟังก์ชันช่วยตรวจเช็คและสลับโหมดอัตโนมัติ (Update Mode vs Insert Mode)
-  function checkAndPopulateLayperson(rawCard) {
-    if (!rawCard) return;
-    const cleanCard = rawCard.toString().replace(/[-\s]/g, "").trim();
-    if (cleanCard.length < 5) return;
+function generateNextLayId(notify = false) {
+  let maxNum = 0;
+  if (Array.isArray(state.laypeople)) {
+    state.laypeople.forEach(l => {
+      const match = (l.id || "").match(/LP(\d+)/i);
+      if (match) {
+        const num = parseInt(match[1]);
+        if (num > maxNum) maxNum = num;
+      }
+    });
+  }
+  const nextId = "LP" + String(maxNum + 1).padStart(4, "0");
+  const layIdInput = document.getElementById("layId");
+  if (layIdInput) layIdInput.value = nextId;
 
-    // 1. ตรวจสอบกับพระสงฆ์
-    const monkMatch = state.monks.find(m => (m.idCard || "").toString().replace(/[-\s]/g, "").trim() === cleanCard);
+  state.editingLayId = null;
+
+  const badge = document.getElementById("layIdBadge");
+  if (badge) {
+    badge.style.display = "inline-block";
+    badge.style.background = "#ecfdf5";
+    badge.style.color = "#065f46";
+    badge.textContent = "✓ รหัสใหม่ (Primary Key)";
+  }
+
+  const statusBadge = document.getElementById("layStatusBadge");
+  if (statusBadge) {
+    statusBadge.className = "status-badge available";
+    statusBadge.textContent = "พร้อมลงทะเบียนใหม่";
+  }
+
+  const btnConfirm = document.getElementById("btnConfirmLayRegistration");
+  if (btnConfirm) {
+    btnConfirm.textContent = "✓ ยืนยันลงทะเบียนญาติโยม";
+    btnConfirm.style.background = "";
+  }
+
+  if (notify) {
+    showToast(`สร้างรหัสญาติโยมถัดไป: ${nextId}`, "info");
+  }
+  return nextId;
+}
+window.generateNextLayId = generateNextLayId;
+
+function checkAndPopulateLayperson(searchTerm) {
+  if (!searchTerm) return;
+  const cleanTerm = searchTerm.toString().replace(/[-\s]/g, "").trim().toLowerCase();
+  if (cleanTerm.length < 2) return;
+
+  // 1. ตรวจสอบกับพระสงฆ์ก่อน (หากเป็นเลขบัตร 13 หลัก)
+  if (cleanTerm.length >= 10 && !cleanTerm.includes("x")) {
+    const monkMatch = state.monks.find(m => (m.idCard || "").toString().replace(/[-\s]/g, "").trim() === cleanTerm);
     if (monkMatch) {
       showToast(`⚠️ เลขบัตรนี้เคยลงทะเบียนในรายชื่อ 'พระสงฆ์ที่นิมนต์' แล้ว: ${monkMatch.name}`, "warning");
       return;
     }
-    const walkinMatch = state.walkinMonks.find(w => (w.idCard || "").toString().replace(/[-\s]/g, "").trim() === cleanCard);
+    const walkinMatch = state.walkinMonks.find(w => (w.idCard || "").toString().replace(/[-\s]/g, "").trim() === cleanTerm);
     if (walkinMatch) {
       showToast(`⚠️ เลขบัตรนี้เคยลงทะเบียนใน 'พระนอกรายชื่อ' แล้ว: ${walkinMatch.name}`, "warning");
       return;
     }
+  }
 
-    // 2. ตรวจสอบกับญาติโยมเดิม (Primary Key)
-    const existing = state.laypeople.find(l => (l.idCard || "").toString().replace(/[-\s]/g, "").trim() === cleanCard);
-    const badge = document.getElementById("layStatusBadge");
-    const btnConfirm = document.getElementById("btnConfirmLayRegistration");
+  // 2. ตรวจสอบกับญาติโยม (ค้นหาด้วย รหัสญาติโยม เป็น Primary Key หลัก หรือด้วยเลขบัตรประชาชน)
+  const existing = state.laypeople.find(l => {
+    const lId = (l.id || "").toString().trim().toLowerCase();
+    const lCard = (l.idCard || "").toString().replace(/[-\s]/g, "").trim().toLowerCase();
+    return (lId && lId === cleanTerm) || (lCard && lCard === cleanTerm);
+  });
 
-    if (existing) {
-      state.editingLayId = existing.id;
-      if (document.getElementById("layName")) document.getElementById("layName").value = existing.name || "";
-      if (document.getElementById("layIdCard")) document.getElementById("layIdCard").value = existing.idCard || rawCard;
-      if (document.getElementById("layBirthday")) document.getElementById("layBirthday").value = existing.birthday || "";
-      if (document.getElementById("layGender")) document.getElementById("layGender").value = existing.gender || "ชาย";
-      if (document.getElementById("layAddress")) document.getElementById("layAddress").value = existing.address || "";
-      if (document.getElementById("layPhone")) document.getElementById("layPhone").value = existing.phone || "";
-      if (document.getElementById("layEmergencyPhone")) document.getElementById("layEmergencyPhone").value = existing.emergencyPhone || "";
+  const badge = document.getElementById("layIdBadge");
+  const statusBadge = document.getElementById("layStatusBadge");
+  const btnConfirm = document.getElementById("btnConfirmLayRegistration");
 
-      if (badge) {
-        badge.className = "status-badge registered";
-        badge.textContent = "✓ เคยลงทะเบียนแล้ว (อัปเดตข้อมูล)";
-      }
-      if (btnConfirm) {
-        btnConfirm.textContent = "💾 บันทึกอัปเดตข้อมูลญาติโยม (มีข้อมูลในระบบแล้ว)";
-        btnConfirm.style.background = "#0284c7";
-      }
-      showToast(`✓ ตรวจพบข้อมูลญาติโยมเดิม: คุณ ${existing.name} (ดึงข้อมูลเพื่ออัปเดต)`, "info");
-    } else {
-      state.editingLayId = null;
-      if (badge) {
-        badge.className = "status-badge available";
-        badge.textContent = "พร้อมลงทะเบียนใหม่";
-      }
-      if (btnConfirm) {
-        btnConfirm.textContent = "✓ ยืนยันลงทะเบียนญาติโยม";
-        btnConfirm.style.background = "";
-      }
+  if (existing) {
+    state.editingLayId = existing.id;
+    if (document.getElementById("layId")) document.getElementById("layId").value = existing.id || "";
+    if (document.getElementById("layName")) document.getElementById("layName").value = existing.name || "";
+    if (document.getElementById("layIdCard")) document.getElementById("layIdCard").value = existing.idCard || "";
+    if (document.getElementById("layBirthday")) document.getElementById("layBirthday").value = existing.birthday || "";
+    if (document.getElementById("layGender")) document.getElementById("layGender").value = existing.gender || "ชาย";
+    if (document.getElementById("layAddress")) document.getElementById("layAddress").value = existing.address || "";
+    if (document.getElementById("layPhone")) document.getElementById("layPhone").value = existing.phone || "";
+    if (document.getElementById("layEmergencyPhone")) document.getElementById("layEmergencyPhone").value = existing.emergencyPhone || "";
+
+    if (badge) {
+      badge.style.display = "inline-block";
+      badge.style.background = "#dbeafe";
+      badge.style.color = "#1e40af";
+      badge.textContent = "✓ มีข้อมูลเดิม (Update Mode)";
+    }
+    if (statusBadge) {
+      statusBadge.className = "status-badge registered";
+      statusBadge.textContent = "✓ เคยลงทะเบียนแล้ว (อัปเดตข้อมูล)";
+    }
+    if (btnConfirm) {
+      btnConfirm.textContent = `💾 บันทึกอัปเดตข้อมูลญาติโยม (รหัส: ${existing.id})`;
+      btnConfirm.style.background = "#0284c7";
+    }
+    showToast(`✓ ตรวจพบข้อมูลญาติโยมเดิม รหัส ${existing.id}: คุณ ${existing.name} (ดึงข้อมูลเพื่ออัปเดต)`, "info");
+  } else {
+    state.editingLayId = null;
+    if (badge) {
+      badge.style.display = "inline-block";
+      badge.style.background = "#ecfdf5";
+      badge.style.color = "#065f46";
+      badge.textContent = "✓ รหัสใหม่ (Primary Key)";
+    }
+    if (statusBadge) {
+      statusBadge.className = "status-badge available";
+      statusBadge.textContent = "พร้อมลงทะเบียนใหม่";
+    }
+    if (btnConfirm) {
+      btnConfirm.textContent = "✓ ยืนยันลงทะเบียนญาติโยม";
+      btnConfirm.style.background = "";
     }
   }
+}
+
+function setupLayWorkflow() {
+  // สร้างรหัสญาติโยมเริ่มต้นให้ทันที
+  generateNextLayId(false);
 
   // ปุ่มจำลองสแกนบัตร Smart Card
   document.getElementById("btnSimulateLayScan").addEventListener("click", () => {
@@ -1071,26 +1138,39 @@ function setupLayWorkflow() {
     document.getElementById("layPhone").value = p.phone;
     document.getElementById("layEmergencyPhone").value = p.emergencyPhone;
 
-    checkAndPopulateLayperson(p.idCard);
+    if (p.idCard) {
+      checkAndPopulateLayperson(p.idCard);
+    } else {
+      showToast(`อ่านข้อมูลจากบัตรประชาชน: ${p.name} (เว้นเลขประชาชนได้)`, "info");
+    }
   });
 
-  // ช่องกรอกเลขบัตรประชาชน (Auto Check on input/change)
+  // ช่องค้นหาด้วยรหัส หรือเลขบัตร
   const inputManual = document.getElementById("layIdCardManual");
   if (inputManual) {
     inputManual.addEventListener("input", (e) => {
       const val = e.target.value.trim();
-      const cleanVal = val.replace(/[-\s]/g, "");
-      if (cleanVal.length >= 10 && !cleanVal.includes("x")) {
-        const inputMain = document.getElementById("layIdCard");
-        if (inputMain) inputMain.value = val;
+      if (val.length >= 2) {
         checkAndPopulateLayperson(val);
       }
     });
   }
 
-  const inputLayId = document.getElementById("layIdCard");
+  // ช่องรหัสญาติโยม (Primary Key) ตรวจเช็คเมื่อพิมพ์
+  const inputLayId = document.getElementById("layId");
   if (inputLayId) {
     inputLayId.addEventListener("input", (e) => {
+      const val = e.target.value.trim();
+      if (val.length >= 2) {
+        checkAndPopulateLayperson(val);
+      }
+    });
+  }
+
+  // ช่องเลขบัตรประชาชน (ไม่บังคับ แต่ถ้าพิมพ์ก็ตรวจเช็คให้)
+  const inputCard = document.getElementById("layIdCard");
+  if (inputCard) {
+    inputCard.addEventListener("input", (e) => {
       const val = e.target.value.trim();
       const cleanVal = val.replace(/[-\s]/g, "");
       if (cleanVal.length >= 10 && !cleanVal.includes("x")) {
@@ -1105,8 +1185,9 @@ function setupLayWorkflow() {
 }
 
 function confirmLayRegistration() {
+  let layId = document.getElementById("layId") ? document.getElementById("layId").value.trim() : "";
   const name = document.getElementById("layName").value.trim();
-  const idCard = document.getElementById("layIdCard").value.trim();
+  const idCard = document.getElementById("layIdCard").value.trim(); // เว้นว่างได้
   const cleanId = idCard.replace(/[-\s]/g, "").trim();
   const birthday = document.getElementById("layBirthday").value.trim();
   const gender = document.getElementById("layGender").value;
@@ -1114,42 +1195,45 @@ function confirmLayRegistration() {
   const phone = document.getElementById("layPhone").value.trim();
   const emergencyPhone = document.getElementById("layEmergencyPhone").value.trim();
 
-  // 1. ตรวจสอบเลขประจำตัวประชาชน (Primary Key ห้ามเว้นว่าง และห้ามเป็น dummy)
-  if (!cleanId || cleanId.length < 13 || cleanId.includes("x")) {
-    showToast("กรุณาระบุเลขประจำตัวประชาชน 13 หลักให้ถูกต้อง (เลขบัตรเป็น Primary Key ห้ามเว้นว่างหรือซ้ำ)", "warning");
-    document.getElementById("layIdCard").focus();
-    return;
+  // 1. ตรวจสอบรหัสญาติโยม (Primary Key)
+  if (!layId) {
+    layId = generateNextLayId(false);
   }
 
+  // 2. ตรวจสอบชื่อ - นามสกุล (จำเป็นต้องกรอก)
   if (!name) {
-    showToast("กรุณากรอกชื่อ-นามสกุลญาติโยมให้ครบถ้วน", "warning");
+    showToast("กรุณากรอกชื่อ-นามสกุลญาติโยม", "warning");
+    document.getElementById("layName").focus();
     return;
   }
 
-  // 2. ตรวจสอบกับพระสงฆ์
-  const monkMatch = state.monks.find(m => (m.idCard || "").toString().replace(/[-\s]/g, "").trim() === cleanId);
-  if (monkMatch) {
-    showToast(`⚠️ เลขบัตรประชาชนนี้อยู่ในรายนาม 'พระสงฆ์ที่นิมนต์' แล้ว: ${monkMatch.name}`, "warning");
-    return;
-  }
-  const walkinMatch = state.walkinMonks.find(w => (w.idCard || "").toString().replace(/[-\s]/g, "").trim() === cleanId);
-  if (walkinMatch) {
-    showToast(`⚠️ เลขบัตรประชาชนนี้อยู่ใน 'พระนอกรายชื่อ' แล้ว: ${walkinMatch.name}`, "warning");
-    return;
+  // 3. ตรวจสอบเลขบัตรประชาชน (กรณีระบุ ไม่เว้นว่าง)
+  if (cleanId && cleanId.length >= 10 && !cleanId.includes("x")) {
+    const monkMatch = state.monks.find(m => (m.idCard || "").toString().replace(/[-\s]/g, "").trim() === cleanId);
+    if (monkMatch) {
+      showToast(`⚠️ เลขบัตรประชาชนนี้อยู่ในรายนาม 'พระสงฆ์ที่นิมนต์' แล้ว: ${monkMatch.name}`, "warning");
+      return;
+    }
+    const walkinMatch = state.walkinMonks.find(w => (w.idCard || "").toString().replace(/[-\s]/g, "").trim() === cleanId);
+    if (walkinMatch) {
+      showToast(`⚠️ เลขบัตรประชาชนนี้อยู่ใน 'พระนอกรายชื่อ' แล้ว: ${walkinMatch.name}`, "warning");
+      return;
+    }
   }
 
   const now = new Date().toLocaleString("th-TH");
 
-  // 3. ตรวจสอบว่าเคยลงทะเบียนในญาติโยมแล้วหรือไม่ (เช็ค Primary Key)
+  // 4. ตรวจสอบว่ามีรหัสญาติโยมนี้ในระบบแล้วหรือไม่ (เช็ค Primary Key: layId)
   const existingIndex = state.laypeople.findIndex(l => {
-    const lCard = (l.idCard || "").toString().replace(/[-\s]/g, "").trim();
-    return (lCard && lCard === cleanId) || (state.editingLayId && l.id === state.editingLayId);
+    const lId = (l.id || "").toString().trim().toLowerCase();
+    return (lId && lId === layId.toLowerCase()) || (state.editingLayId && l.id === state.editingLayId);
   });
 
   if (existingIndex !== -1) {
     // === UPDATE EXISTING (อัปเดตแถวเดิม ไม่สร้างแถวใหม่) ===
     const existing = state.laypeople[existingIndex];
-    existing.idCard = idCard;
+    existing.id = layId;
+    existing.idCard = idCard; // เว้นว่างได้
     existing.name = name;
     existing.birthday = birthday;
     existing.gender = gender;
@@ -1161,22 +1245,22 @@ function confirmLayRegistration() {
     // กรองแถวซ้ำใน memory ให้เหลือเพียงแถวเดียว
     state.laypeople = state.laypeople.filter((l, idx) => {
       if (idx === existingIndex) return true;
-      const otherCard = (l.idCard || "").toString().replace(/[-\s]/g, "").trim();
-      return otherCard !== cleanId;
+      const otherId = (l.id || "").toString().trim().toLowerCase();
+      return otherId !== layId.toLowerCase();
     });
 
     saveLocal("TEMPLE_LAY_DATA", state.laypeople);
     updateAllKpis();
     renderReportTable();
 
-    showToast(`✓ อัปเดตข้อมูลญาติโยม: คุณ ${name} (เลขบัตร: ${idCard}) เรียบร้อยแล้ว`, "success");
+    showToast(`✓ อัปเดตข้อมูลญาติโยม รหัส: ${layId} (คุณ ${name}) เรียบร้อยแล้ว`, "success");
     resetLayWorkflow();
 
     if (state.gasUrl) {
       callGasApi({
         action: "register_layperson",
-        id: existing.id,
-        idCard: cleanId,
+        id: layId,
+        idCard: idCard,
         name: name,
         birthday: birthday,
         gender: gender,
@@ -1193,11 +1277,11 @@ function confirmLayRegistration() {
     }
 
   } else {
-    // === INSERT NEW (เพิ่มแถวใหม่เฉพาะเมื่อเป็นเลขบัตรใหม่) ===
+    // === INSERT NEW (เพิ่มแถวใหม่ด้วยรหัส layId) ===
     const newLay = {
-      id: "LP" + Date.now().toString().slice(-6),
+      id: layId,
+      idCard: idCard, // เว้นว่างได้
       name: name,
-      idCard: idCard,
       birthday: birthday,
       gender: gender,
       address: address,
@@ -1211,14 +1295,13 @@ function confirmLayRegistration() {
     updateAllKpis();
     renderReportTable();
 
-    showToast(`✓ บันทึกและลงทะเบียนญาติโยม: คุณ ${name} สำเร็จ`, "success");
+    showToast(`✓ บันทึกและลงทะเบียนญาติโยม รหัส: ${layId} (คุณ ${name}) สำเร็จ`, "success");
     resetLayWorkflow();
 
     if (state.gasUrl) {
       callGasApi({
         action: "register_layperson",
         ...newLay,
-        idCard: cleanId,
         isUpdate: false
       }).then(res => {
         if (res && res.status === "success") {
@@ -1241,17 +1324,8 @@ function resetLayWorkflow() {
   const manual = document.getElementById("layIdCardManual");
   if (manual) manual.value = "";
 
-  const badge = document.getElementById("layStatusBadge");
-  if (badge) {
-    badge.className = "status-badge available";
-    badge.textContent = "พร้อมลงทะเบียน";
-  }
-
-  const btnConfirm = document.getElementById("btnConfirmLayRegistration");
-  if (btnConfirm) {
-    btnConfirm.textContent = "✓ ยืนยันลงทะเบียนญาติโยม";
-    btnConfirm.style.background = "";
-  }
+  // สร้างรหัสญาติโยมใหม่ถัดไปเตรียมไว้ให้อัตโนมัติ
+  generateNextLayId(false);
 }
 
 /**
@@ -1968,35 +2042,26 @@ async function fetchLiveDataFromSheet(notify = false) {
         saveLocal("TEMPLE_WALKIN_DATA", state.walkinMonks);
       }
 
-      // 3. ญาติโยม (ดีดูพลิเคตโดยใช้เลขบัตรประชาชนเป็น Primary Key ห้ามซ้ำ)
+      // 3. ญาติโยม (ดีดูพลิเคตโดยใช้รหัสญาติโยมเป็น Primary Key ห้ามซ้ำ)
       if (Array.isArray(json.laypeople)) {
         const uniqueLay = [];
-        const seenCards = new Set();
         const seenIds = new Set();
 
         json.laypeople.forEach(l => {
-          const rawCard = (l["เลขบัตรประชาชน"] || l.idCard || "").toString();
-          const cleanCard = rawCard.replace(/[-\s]/g, "").trim();
           const lId = (l["รหัส"] || l.id || "").toString().trim();
-
-          if (cleanCard && cleanCard.length >= 10 && !cleanCard.includes("x")) {
-            if (seenCards.has(cleanCard)) return; // ข้ามแถวที่เลขบัตรซ้ำ
-            seenCards.add(cleanCard);
-          } else if (lId) {
-            if (seenIds.has(lId)) return;
-            seenIds.add(lId);
-          }
+          if (!lId || seenIds.has(lId.toLowerCase())) return;
+          seenIds.add(lId.toLowerCase());
 
           uniqueLay.push({
             id: lId,
-            idCard: rawCard,
-            name: l["ชื่อ - นามสกุล"] || l.name,
-            birthday: l["วันเกิด"] || l.birthday,
-            gender: l["เพศ"] || l.gender,
-            address: l["ที่อยู่"] || l.address,
-            phone: l["เบอร์โทรศัพท์"] || l["เบอร์โทร"] || l.phone,
-            emergencyPhone: l["เบอร์ติดต่อฉุกเฉิน"] || l.emergencyPhone,
-            registeredAt: l["เวลาที่ลงทะเบียน"] || l["เวลาลงทะเบียน"] || l.registeredAt
+            idCard: (l["เลขบัตรประชาชน"] || l.idCard || "").toString(),
+            name: l["ชื่อ - นามสกุล"] || l.name || "",
+            birthday: l["วันเกิด"] || l.birthday || "",
+            gender: l["เพศ"] || l.gender || "ชาย",
+            address: l["ที่อยู่"] || l.address || "",
+            phone: l["เบอร์โทรศัพท์"] || l["เบอร์โทร"] || l.phone || "-",
+            emergencyPhone: l["เบอร์ติดต่อฉุกเฉิน"] || l.emergencyPhone || "-",
+            registeredAt: l["เวลาที่ลงทะเบียน"] || l["เวลาลงทะเบียน"] || l.registeredAt || ""
           });
         });
 

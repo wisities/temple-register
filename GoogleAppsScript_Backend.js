@@ -481,7 +481,7 @@ function cleanDuplicateWalkinMonks() {
 }
 
 /**
- * ลงทะเบียนญาติโยม (กำหนดให้เลขบัตรประชาชนเป็น Primary Key ห้ามซ้ำ)
+ * ลงทะเบียนญาติโยม (กำหนดให้ "รหัสญาติโยม" เป็น Primary Key แทน และไม่บังคับใส่เลขบัตรประชาชน)
  */
 function registerLayperson(ss, data) {
   let sheet = ss.getSheetByName(SHEET_NAMES.LAYPEOPLE);
@@ -491,45 +491,42 @@ function registerLayperson(ss, data) {
   }
 
   const now = Utilities.formatDate(new Date(), "Asia/Bangkok", "yyyy-MM-dd HH:mm:ss");
-  const newId = "LP" + Utilities.formatDate(new Date(), "Asia/Bangkok", "yyyyMMdd-HHmmss");
-
+  const targetId = String(data.id || "").trim();
   const cleanId = String(data.idCard || "").replace(/[-\s]/g, "").trim();
-  const searchName = String(data.name || "").trim().toLowerCase();
-  const searchPhone = String(data.phone || "").replace(/[-\s]/g, "").trim();
 
   const dataRange = sheet.getDataRange();
   const values = dataRange.getValues();
-  const matchingRowIndices = [];
+  let foundRowIndex = -1;
 
-  // ตรวจสอบเลขบัตรประชาชนในคอลัมน์ B (Index 1) และรหัสในคอลัมน์ A (Index 0)
-  for (let i = 1; i < values.length; i++) {
-    const rowId = String(values[i][0] || "").trim();
-    const rowCard = String(values[i][1] || "").replace(/[-\s]/g, "").trim();
-    const rowName = String(values[i][2] || "").trim().toLowerCase();
-    const rowPhone = String(values[i][6] || "").replace(/[-\s]/g, "").trim();
-
-    // 1. ตรงตามเลขบัตรประชาชน 13 หลัก (Primary Key)
-    if (cleanId && cleanId.length >= 10 && !cleanId.includes("x") && rowCard === cleanId) {
-      matchingRowIndices.push(i + 1);
-    }
-    // 2. หรือตรงตามรหัส LP ที่ระบุมา
-    else if (data.id && rowId && rowId === String(data.id).trim()) {
-      matchingRowIndices.push(i + 1);
-    }
-    // 3. หรือชื่อและเบอร์โทรศัพท์ตรงกัน
-    else if (searchName && searchPhone && rowName === searchName && rowPhone === searchPhone) {
-      matchingRowIndices.push(i + 1);
+  // 1. ตรวจสอบจาก "รหัสญาติโยม" ในคอลัมน์ A (Index 0) เป็น Primary Key หลัก
+  if (targetId) {
+    for (let i = 1; i < values.length; i++) {
+      const rowId = String(values[i][0] || "").trim();
+      if (rowId.toLowerCase() === targetId.toLowerCase()) {
+        foundRowIndex = i + 1;
+        break;
+      }
     }
   }
 
-  if (matchingRowIndices.length > 0) {
-    // พบข้อมูลเดิม -> ทำการ UPDATE แถวแรกที่พบ
-    const primaryRowIndex = matchingRowIndices[0];
-    const existingId = values[primaryRowIndex - 1][0] || data.id || newId;
+  // 2. หากยังไม่พบรหัส แต่มีการระบุเลขบัตรประชาชนมา ให้ตรวจคอลัมน์ B เผื่อกรณีดึงข้อมูลเดิม
+  if (foundRowIndex === -1 && cleanId && cleanId.length >= 10 && !cleanId.includes("x")) {
+    for (let i = 1; i < values.length; i++) {
+      const rowCard = String(values[i][1] || "").replace(/[-\s]/g, "").trim();
+      if (rowCard === cleanId) {
+        foundRowIndex = i + 1;
+        break;
+      }
+    }
+  }
+
+  if (foundRowIndex > 0) {
+    // พบข้อมูลเดิม -> ทำการ UPDATE แถวเดิม
+    const existingId = values[foundRowIndex - 1][0] || targetId;
 
     const updatedRow = [
       existingId,
-      data.idCard || cleanId,
+      data.idCard || "", // เลขบัตรประชาชน (เว้นว่างได้)
       data.name || "",
       data.birthday || "",
       data.gender || "",
@@ -539,32 +536,35 @@ function registerLayperson(ss, data) {
       now
     ];
 
-    sheet.getRange(primaryRowIndex, 1, 1, updatedRow.length).setValues([updatedRow]);
-
-    // หากมีแถวซ้ำซ้อนเดิมที่เคยบันทึกไว้เกิน 1 แถว ให้ลบแถวซ้ำออก (ลบจากล่างขึ้นบน)
-    if (matchingRowIndices.length > 1) {
-      for (let d = matchingRowIndices.length - 1; d >= 1; d--) {
-        try {
-          sheet.deleteRow(matchingRowIndices[d]);
-        } catch (delErr) {
-          console.warn("Error deleting duplicate lay row:", delErr);
-        }
-      }
-    }
+    sheet.getRange(foundRowIndex, 1, 1, updatedRow.length).setValues([updatedRow]);
 
     return {
       status: "success",
       isUpdate: true,
       id: existingId,
-      message: "อัปเดตข้อมูลญาติโยมสำเร็จ (เลขบัตรประชาชนมีในระบบแล้ว)",
+      message: "อัปเดตข้อมูลญาติโยมสำเร็จ (รหัสเดิม: " + existingId + ")",
       registeredAt: now
     };
   }
 
   // ไม่พบข้อมูลเดิม -> เพิ่มแถวใหม่ (INSERT)
+  // หากไม่มีรหัสส่งมา ให้คำนวณรหัสถัดไป เช่น LP0001, LP0002...
+  let finalId = targetId;
+  if (!finalId) {
+    let maxNum = 0;
+    for (let i = 1; i < values.length; i++) {
+      const match = String(values[i][0] || "").match(/LP(\d+)/i);
+      if (match) {
+        const num = parseInt(match[1]);
+        if (num > maxNum) maxNum = num;
+      }
+    }
+    finalId = "LP" + String(maxNum + 1).padStart(4, "0");
+  }
+
   const newRow = [
-    data.id || newId,
-    data.idCard || cleanId,
+    finalId,
+    data.idCard || "", // เลขบัตรประชาชน (เว้นว่างได้)
     data.name || "",
     data.birthday || "",
     data.gender || "",
@@ -578,8 +578,8 @@ function registerLayperson(ss, data) {
   return {
     status: "success",
     isUpdate: false,
-    id: data.id || newId,
-    message: "บันทึกข้อมูลญาติโยมสำเร็จ",
+    id: finalId,
+    message: "บันทึกข้อมูลญาติโยมสำเร็จ (รหัส: " + finalId + ")",
     registeredAt: now
   };
 }
@@ -601,12 +601,12 @@ function cleanDuplicateLaypeople() {
 
   for (let i = 1; i < values.length; i++) {
     const rowNum = i + 1;
+    const rowId = String(values[i][0] || "").trim().toLowerCase();
     const card = String(values[i][1] || "").replace(/[-\s]/g, "").trim();
-    const name = String(values[i][2] || "").trim();
 
-    const key = (card && card.length >= 10 && !card.includes("x")) ? ("CARD:" + card) : ("NAME:" + name);
+    const key = rowId ? ("ID:" + rowId) : ((card && card.length >= 10 && !card.includes("x")) ? ("CARD:" + card) : "");
 
-    if (key && key !== "NAME:") {
+    if (key) {
       if (seenKeys[key]) {
         rowsToDelete.push(rowNum);
       } else {

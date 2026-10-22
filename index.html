@@ -385,7 +385,7 @@
 
               <div class="id-input-group">
                 <label for="layIdCardManual">หรือกรอกเลขบัตรประชาชน 13 หลัก:</label>
-                <input type="text" id="layIdCardManual" class="input-control" placeholder="1-xxxx-xxxxx-xx-x" maxlength="17">
+                <input type="text" id="layIdCardManual" class="input-control" placeholder="เลขประจำตัวประชาชน 13 หลัก" maxlength="20">
               </div>
             </div>
           </div>
@@ -406,15 +406,15 @@
             <div class="profile-info-grid" style="margin-bottom: 1.5rem;">
               <div class="info-item">
                 <label class="info-label">ชื่อ - นามสกุล:</label>
-                <input type="text" id="layName" class="input-control" value="นายสมชาย ใจดี">
+                <input type="text" id="layName" class="input-control" placeholder="ระบุชื่อ - นามสกุล">
               </div>
               <div class="info-item">
-                <label class="info-label">เลขบัตรประชาชน:</label>
-                <input type="text" id="layIdCard" class="input-control" value="1-2345-67890-12-3">
+                <label class="info-label" style="font-weight: 700; color: #0369a1;">เลขบัตรประชาชน (Primary Key):</label>
+                <input type="text" id="layIdCard" class="input-control" placeholder="เลขประจำตัวประชาชน 13 หลัก" maxlength="20" style="font-weight: 600;">
               </div>
               <div class="info-item">
                 <label class="info-label">วันเกิด:</label>
-                <input type="text" id="layBirthday" class="input-control" value="12/03/2530">
+                <input type="text" id="layBirthday" class="input-control" placeholder="วว/ดด/ปปปป (พ.ศ.)">
               </div>
               <div class="info-item">
                 <label class="info-label">เพศ:</label>
@@ -425,7 +425,7 @@
               </div>
               <div class="info-item full-width">
                 <label class="info-label">ที่อยู่ตามทะเบียนบ้าน:</label>
-                <input type="text" id="layAddress" class="input-control" value="123 หมู่ 1 ต.ในเมือง อ.เมือง จ.เชียงใหม่">
+                <input type="text" id="layAddress" class="input-control" placeholder="ระบุที่อยู่ตามทะเบียนบ้าน">
               </div>
             </div>
 
@@ -436,11 +436,11 @@
             <div class="profile-info-grid">
               <div class="info-item">
                 <label class="info-label">เบอร์โทรศัพท์มือถือ:</label>
-                <input type="text" id="layPhone" class="input-control" value="081-234-5678" placeholder="08x-xxx-xxxx">
+                <input type="text" id="layPhone" class="input-control" placeholder="08x-xxx-xxxx">
               </div>
               <div class="info-item">
                 <label class="info-label">เบอร์ติดต่อกรณีฉุกเฉิน:</label>
-                <input type="text" id="layEmergencyPhone" class="input-control" value="089-987-6543" placeholder="08x-xxx-xxxx">
+                <input type="text" id="layEmergencyPhone" class="input-control" placeholder="08x-xxx-xxxx">
               </div>
             </div>
 

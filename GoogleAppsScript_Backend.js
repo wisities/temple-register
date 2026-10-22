@@ -266,7 +266,7 @@ function importMonksBatch(ss, monks) {
 }
 
 /**
- * ยืนยันการลงทะเบียนพระสงฆ์ที่นิมนต์
+ * ยืนยันการลงทะเบียนพระสงฆ์ที่นิมนต์ (อัปเดตเฉพาะแถวเดิม ห้ามสร้างแถวใหม่)
  */
 function registerMonk(ss, data) {
   const sheet = ss.getSheetByName(SHEET_NAMES.INVITED_MONKS);
@@ -274,14 +274,14 @@ function registerMonk(ss, data) {
 
   const values = sheet.getDataRange().getValues();
   const searchName = (data.name || "").toString().trim().toLowerCase();
-  const searchCard = (data.idCard || "").toString().replace(/[-\s]/g, "");
-  const searchIdNum = parseInt((data.id || "").replace("MK", ""));
+  const searchCard = (data.idCard || "").toString().replace(/[-\s]/g, "").trim();
+  const searchIdNum = parseInt((data.id || "").toString().replace("MK", ""));
 
   let foundRow = -1;
   for (let i = 1; i < values.length; i++) {
     const rowIdNum = parseInt(values[i][0]); // Column A: ลำดับที่ (1-422)
     const rowName = values[i][7].toString().trim().toLowerCase(); // Column H (ชื่อพระ)
-    const rowCard = values[i][18].toString().replace(/[-\s]/g, ""); // Column S (เลขบัตรประชาชน)
+    const rowCard = values[i][18].toString().replace(/[-\s]/g, "").trim(); // Column S (เลขบัตรประชาชน)
 
     if (searchIdNum && rowIdNum === searchIdNum) {
       foundRow = i + 1;
@@ -300,16 +300,40 @@ function registerMonk(ss, data) {
   const now = Utilities.formatDate(new Date(), "Asia/Bangkok", "yyyy-MM-dd HH:mm:ss");
 
   if (foundRow > 0) {
-    // บันทึกเลขบัตรประชาชนลงใน Column S (คอลัมน์ 19)
+    // ตรวจสอบว่ามีพระรูปอื่นในรายชื่อนิมนต์ผูกกับเลขบัตรประชาชนนี้อยู่แล้วหรือไม่
+    if (searchCard && searchCard.length >= 10 && !searchCard.includes("x")) {
+      for (let i = 1; i < values.length; i++) {
+        if (i + 1 !== foundRow) {
+          const otherCard = values[i][18].toString().replace(/[-\s]/g, "").trim();
+          if (otherCard === searchCard) {
+            const otherName = values[i][7] || ("ลำดับที่ " + values[i][0]);
+            return {
+              status: "error",
+              message: "เลขบัตรประชาชนนี้ถูกบันทึกให้พระรูปอื่นแล้ว: " + otherName
+            };
+          }
+        }
+      }
+    }
+
+    // อัปเดตข้อมูลในแถวเดิมเท่านั้น (ไม่เพิ่มแถวใหม่เด็ดขาด)
     if (data.idCard) {
-      sheet.getRange(foundRow, 19).setValue(data.idCard.toString().trim());
+      sheet.getRange(foundRow, 19).setValue(data.idCard.toString().trim()); // Column S: เลขบัตรประชาชน
     }
     sheet.getRange(foundRow, 21).setValue("ลงทะเบียนแล้ว"); // Column U: สถานะลงทะเบียน
     sheet.getRange(foundRow, 22).setValue(now);               // Column V: เวลาที่ลงทะเบียน
-    return { status: "success", message: "ลงทะเบียนพระสำเร็จ", registeredAt: now, row: foundRow };
+    return {
+      status: "success",
+      isUpdate: true,
+      message: "ลงทะเบียนพระสำเร็จ (อัปเดตแถวเดิม)",
+      registeredAt: now,
+      row: foundRow
+    };
   } else {
-    // If not found in invited list, save to walkin
-    return registerWalkinMonk(ss, data);
+    return {
+      status: "error",
+      message: "ไม่พบข้อมูลพระสงฆ์ในรายชื่อนิมนต์ ไม่สามารถลงทะเบียนได้"
+    };
   }
 }
 
@@ -457,7 +481,7 @@ function cleanDuplicateWalkinMonks() {
 }
 
 /**
- * ลงทะเบียนญาติโยม
+ * ลงทะเบียนญาติโยม (กำหนดให้เลขบัตรประชาชนเป็น Primary Key ห้ามซ้ำ)
  */
 function registerLayperson(ss, data) {
   let sheet = ss.getSheetByName(SHEET_NAMES.LAYPEOPLE);
@@ -469,9 +493,78 @@ function registerLayperson(ss, data) {
   const now = Utilities.formatDate(new Date(), "Asia/Bangkok", "yyyy-MM-dd HH:mm:ss");
   const newId = "LP" + Utilities.formatDate(new Date(), "Asia/Bangkok", "yyyyMMdd-HHmmss");
 
-  const row = [
+  const cleanId = String(data.idCard || "").replace(/[-\s]/g, "").trim();
+  const searchName = String(data.name || "").trim().toLowerCase();
+  const searchPhone = String(data.phone || "").replace(/[-\s]/g, "").trim();
+
+  const dataRange = sheet.getDataRange();
+  const values = dataRange.getValues();
+  const matchingRowIndices = [];
+
+  // ตรวจสอบเลขบัตรประชาชนในคอลัมน์ B (Index 1) และรหัสในคอลัมน์ A (Index 0)
+  for (let i = 1; i < values.length; i++) {
+    const rowId = String(values[i][0] || "").trim();
+    const rowCard = String(values[i][1] || "").replace(/[-\s]/g, "").trim();
+    const rowName = String(values[i][2] || "").trim().toLowerCase();
+    const rowPhone = String(values[i][6] || "").replace(/[-\s]/g, "").trim();
+
+    // 1. ตรงตามเลขบัตรประชาชน 13 หลัก (Primary Key)
+    if (cleanId && cleanId.length >= 10 && !cleanId.includes("x") && rowCard === cleanId) {
+      matchingRowIndices.push(i + 1);
+    }
+    // 2. หรือตรงตามรหัส LP ที่ระบุมา
+    else if (data.id && rowId && rowId === String(data.id).trim()) {
+      matchingRowIndices.push(i + 1);
+    }
+    // 3. หรือชื่อและเบอร์โทรศัพท์ตรงกัน
+    else if (searchName && searchPhone && rowName === searchName && rowPhone === searchPhone) {
+      matchingRowIndices.push(i + 1);
+    }
+  }
+
+  if (matchingRowIndices.length > 0) {
+    // พบข้อมูลเดิม -> ทำการ UPDATE แถวแรกที่พบ
+    const primaryRowIndex = matchingRowIndices[0];
+    const existingId = values[primaryRowIndex - 1][0] || data.id || newId;
+
+    const updatedRow = [
+      existingId,
+      data.idCard || cleanId,
+      data.name || "",
+      data.birthday || "",
+      data.gender || "",
+      data.address || "",
+      data.phone || "",
+      data.emergencyPhone || "",
+      now
+    ];
+
+    sheet.getRange(primaryRowIndex, 1, 1, updatedRow.length).setValues([updatedRow]);
+
+    // หากมีแถวซ้ำซ้อนเดิมที่เคยบันทึกไว้เกิน 1 แถว ให้ลบแถวซ้ำออก (ลบจากล่างขึ้นบน)
+    if (matchingRowIndices.length > 1) {
+      for (let d = matchingRowIndices.length - 1; d >= 1; d--) {
+        try {
+          sheet.deleteRow(matchingRowIndices[d]);
+        } catch (delErr) {
+          console.warn("Error deleting duplicate lay row:", delErr);
+        }
+      }
+    }
+
+    return {
+      status: "success",
+      isUpdate: true,
+      id: existingId,
+      message: "อัปเดตข้อมูลญาติโยมสำเร็จ (เลขบัตรประชาชนมีในระบบแล้ว)",
+      registeredAt: now
+    };
+  }
+
+  // ไม่พบข้อมูลเดิม -> เพิ่มแถวใหม่ (INSERT)
+  const newRow = [
     data.id || newId,
-    data.idCard || "",
+    data.idCard || cleanId,
     data.name || "",
     data.birthday || "",
     data.gender || "",
@@ -481,8 +574,53 @@ function registerLayperson(ss, data) {
     now
   ];
 
-  sheet.appendRow(row);
-  return { status: "success", id: data.id || newId, message: "บันทึกข้อมูลญาติโยมสำเร็จ", registeredAt: now };
+  sheet.appendRow(newRow);
+  return {
+    status: "success",
+    isUpdate: false,
+    id: data.id || newId,
+    message: "บันทึกข้อมูลญาติโยมสำเร็จ",
+    registeredAt: now
+  };
+}
+
+/**
+ * ฟังก์ชันสำหรับกด Run ใน Google Apps Script เพื่อลบแถวที่ซ้ำซ้อนในชีต 'ลงทะเบียนญาติโยม' ทันที
+ * โดยจะคงแถวแรกไว้ และลบแถวที่เลขบัตรหรือชื่อซ้ำด้านล่างออกทั้งหมด
+ */
+function cleanDuplicateLaypeople() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_NAMES.LAYPEOPLE);
+  if (!sheet) return;
+
+  const values = sheet.getDataRange().getValues();
+  if (values.length <= 2) return;
+
+  const seenKeys = {};
+  const rowsToDelete = [];
+
+  for (let i = 1; i < values.length; i++) {
+    const rowNum = i + 1;
+    const card = String(values[i][1] || "").replace(/[-\s]/g, "").trim();
+    const name = String(values[i][2] || "").trim();
+
+    const key = (card && card.length >= 10 && !card.includes("x")) ? ("CARD:" + card) : ("NAME:" + name);
+
+    if (key && key !== "NAME:") {
+      if (seenKeys[key]) {
+        rowsToDelete.push(rowNum);
+      } else {
+        seenKeys[key] = rowNum;
+      }
+    }
+  }
+
+  // ลบแถวซ้ำจากล่างขึ้นบน
+  for (let d = rowsToDelete.length - 1; d >= 0; d--) {
+    sheet.deleteRow(rowsToDelete[d]);
+  }
+
+  Logger.log("ลบแถวญาติโยมที่ซ้ำซ้อนเรียบร้อยแล้ว: " + rowsToDelete.length + " แถว");
 }
 
 /**

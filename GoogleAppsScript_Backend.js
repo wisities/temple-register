@@ -111,8 +111,8 @@ function doPost(e) {
       const count = importMonksBatch(ss, monks);
       result = { status: "success", count: count, message: "นำเข้ารายชื่อพระนิมนต์สำเร็จ " + count + " รูป" };
     }
-    else if (action === "register_monk") {
-      // ลงทะเบียนพระที่ได้รับนิมนต์
+    else if (action === "register_monk" || action === "update_monk") {
+      // ลงทะเบียนหรืออัปเดตข้อมูลพระที่ได้รับนิมนต์ (เลขบัตร / ที่พัก / เบอร์โทร / สิทธิ์ปวารณา)
       result = registerMonk(ss, data);
     }
     else if (action === "register_walkin_monk") {
@@ -297,6 +297,10 @@ function registerMonk(ss, data) {
   const colId = findCol1Based(["รหัส", "ลำดับที่", "ลำดับ", "id"], 1);
   const colName = findCol1Based(["ชื่อ / ฉายา", "ชื่อพระ / ฉายา", "ชื่อพระ", "ชื่อ", "ฉายา"], 3);
 
+  const colPhone = findCol1Based(["เบอร์โทรศัพท์", "เบอร์โทร", "โทรศัพท์", "phone", "tel"], 9);
+  const colHotel = findCol1Based(["ที่พัก / โรงแรม", "ที่พัก/โรงแรม", "ที่พัก", "โรงแรม", "hotel", "room"], 10);
+  const colSlip = findCol1Based(["สิทธิ์รับใบปวารณา", "สิทธิ์ใบปวารณา", "สิทธิ์", "slip"], 11);
+
   const searchName = (data.name || "").toString().trim().toLowerCase();
   const searchCard = (data.idCard || "").toString().replace(/[-\s]/g, "").trim();
   const searchIdStr = (data.id || "").toString().trim();
@@ -346,12 +350,29 @@ function registerMonk(ss, data) {
     }
 
     // อัปเดตข้อมูลในแถวเดิมเท่านั้น (ไม่เพิ่มแถวใหม่เด็ดขาด)
-    // บันทึกเลขบัตรประชาชนลงในคอลัมน์ B (หรือคอลัมน์เลขบัตรประชาชนที่ตรวจพบ)
+    // 1. บันทึกเลขบัตรประชาชนลงในคอลัมน์ B (หรือคอลัมน์เลขบัตรประชาชนที่ตรวจพบ)
     const cardToSave = String(data.idCard || "").trim();
     if (cardToSave) {
-      // ตั้ง Format เป็นข้อความ (@) เพื่อป้องกันการตัดเลข 0 นำหน้า หรือแปลงเป็นเลขยกกำลัง E+12
       sheet.getRange(foundRow, colCard).setNumberFormat("@").setValue(cardToSave);
     }
+
+    // 2. บันทึกเบอร์โทรศัพท์ลงในคอลัมน์ I
+    if (data.phone !== undefined && colPhone > 0) {
+      const phoneToSave = String(data.phone || "").trim();
+      sheet.getRange(foundRow, colPhone).setNumberFormat("@").setValue(phoneToSave);
+    }
+
+    // 3. บันทึกข้อมูลที่พัก / โรงแรม ลงในคอลัมน์ J
+    if (data.hotel !== undefined && colHotel > 0) {
+      sheet.getRange(foundRow, colHotel).setValue(String(data.hotel || "").trim());
+    }
+
+    // 4. บันทึกสิทธิ์รับใบปวารณา ลงในคอลัมน์ K
+    if (data.slipRight !== undefined && colSlip > 0) {
+      sheet.getRange(foundRow, colSlip).setValue(String(data.slipRight || "").trim());
+    }
+
+    // 5. บันทึกสถานะและเวลา
     if (colStatus > 0) {
       sheet.getRange(foundRow, colStatus).setValue("ลงทะเบียนแล้ว");
     }
@@ -362,10 +383,13 @@ function registerMonk(ss, data) {
     return {
       status: "success",
       isUpdate: true,
-      message: "ลงทะเบียนพระสำเร็จ (บันทึกเลขบัตรประชาชนในคอลัมน์ B และอัปเดตแถวเดิม)",
+      message: "ลงทะเบียนและบันทึกข้อมูลพระสำเร็จ (บันทึกเลขบัตร, ที่พัก, เบอร์โทรในแถวเดิม)",
       registeredAt: now,
       row: foundRow,
-      idCard: cardToSave
+      idCard: cardToSave,
+      hotel: data.hotel,
+      phone: data.phone,
+      slipRight: data.slipRight
     };
   } else {
     return {

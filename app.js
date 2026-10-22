@@ -1,6 +1,6 @@
 /**
  * ==========================================================================
- * ระบบลงทะเบียนเข้างานวัด (Temple Event Registration System)
+ * ระบบลงทะเบียนเข้างาน (Temple Event Registration System)
  * Frontend Application Logic & Google Sheets Integration
  * ==========================================================================
  */
@@ -64,7 +64,7 @@ function initData() {
     try {
       const arr = JSON.parse(savedMonks);
       arr.forEach(sm => { if (sm && sm.id) savedMap[sm.id] = sm; });
-    } catch (e) {}
+    } catch (e) { }
   }
 
   state.monks = initialList.map(im => {
@@ -76,18 +76,20 @@ function initData() {
         ...im,
         ...saved,
         photo: realPhoto,
-        idCard: (saved.idCard && !saved.idCard.startsWith("1-0000-00000-")) ? saved.idCard : "",
-        hotel: (saved.hotel && !saved.hotel.includes("สิรินธร") && !saved.hotel.includes("ธรรมรุจ")) ? saved.hotel : "",
-        slipRight: saved.slipRight || "",
+        idCard: (saved.idCard && !saved.idCard.startsWith("1-0000-00000-")) ? saved.idCard : (im.idCard || ""),
+        hotel: (saved.hotel !== undefined && saved.hotel !== null && saved.hotel !== "") ? saved.hotel : (im.hotel || ""),
+        slipRight: (saved.slipRight !== undefined && saved.slipRight !== null && saved.slipRight !== "") ? saved.slipRight : (im.slipRight || im._colK || im["สิทธิ์รับใบปวารณา"] || (im.allowSlip ? "มีสิทธิ์" : "") || ""),
+        phone: (saved.phone !== undefined && saved.phone !== null && saved.phone !== "" && saved.phone !== "-") ? saved.phone : (im.phone || ""),
         amount: saved.amount || 0
       };
     }
     return {
       ...im,
       photo: realPhoto,
-      idCard: "",
-      hotel: "",
-      slipRight: "",
+      idCard: im.idCard || "",
+      hotel: im.hotel || "",
+      slipRight: im.slipRight || im._colK || im["สิทธิ์รับใบปวารณา"] || (im.allowSlip ? "มีสิทธิ์" : "") || "",
+      phone: (im.phone && im.phone !== "-") ? im.phone : "",
       amount: 0
     };
   });
@@ -513,7 +515,7 @@ function triggerMonkScan(searchTerm) {
         showToast(`✓ ตรวจพบในชีต 'พระสงฆ์ที่นิมนต์': ${monk.name} วัด ${monk.temple}`, "success");
       }
       return;
-    } 
+    }
     else if (crossMatch.sheetType === "walkin") {
       // พบในชีต "ลงทะเบียนพระนอกรายชื่อ" แล้ว!
       const w = crossMatch.entity;
@@ -525,7 +527,7 @@ function triggerMonkScan(searchTerm) {
       if (document.getElementById("walkinVassa")) document.getElementById("walkinVassa").value = w.vassa || "";
       if (document.getElementById("walkinProvince")) document.getElementById("walkinProvince").value = w.province || "";
       if (document.getElementById("walkinPhone")) document.getElementById("walkinPhone").value = w.phone || "";
-      
+
       showToast(`⚠️ ตรวจพบเลขบัตรนี้เคยลงทะเบียนในชีต 'พระนอกรายชื่อ' แล้ว: ${w.name} วัด ${w.temple} (${w.registeredAt})`, "warning");
       return;
     }
@@ -602,7 +604,7 @@ function triggerMonkScan(searchTerm) {
 function displayInvitedMonk(monk, fromHeldCard = false) {
   state.currentSelectedMonk = monk;
   document.getElementById("monkDetailHeader").textContent = "1.3 ข้อมูลการลงทะเบียนพระสงฆ์";
-  
+
   const statusBadge = document.getElementById("monkDetailSubheader");
   if (monk.status === "ลงทะเบียนแล้ว") {
     statusBadge.className = "status-badge registered";
@@ -627,25 +629,39 @@ function displayInvitedMonk(monk, fromHeldCard = false) {
   document.getElementById("infoMonkProvince").textContent = `${monk.province} (${monk.branch || 'สาขากลาง'})`;
   document.getElementById("infoMonkVassa").textContent = `${monk.vassa} พรรษา`;
 
-  // ที่พัก / โรงแรม: ดึงข้อความตามคอลัมน์ J ตรงๆ (ถ้าช่องนั้นว่าง ก็ว่างไว้ ไม่ต้องเอาอะไรมาแสดง)
+  // ที่พัก / โรงแรม: ดึงข้อความตามคอลัมน์ J ตรงๆ (ถ้าช่องนั้นว่าง ก็ว่างไว้ สามารถพิมพ์แก้ไขได้)
   const hotelElem = document.getElementById("infoMonkHotel");
   const hotelVal = (monk.hotel || "").toString().trim();
   if (hotelElem) {
-    hotelElem.textContent = hotelVal;
-    if (hotelVal) {
-      hotelElem.classList.add("highlight-room");
+    if (hotelElem.tagName === "INPUT") {
+      hotelElem.value = hotelVal;
     } else {
-      hotelElem.classList.remove("highlight-room");
+      hotelElem.textContent = hotelVal;
     }
   }
 
   // สิทธิ์รับใบปวารณา: ดึงข้อความตามคอลัมน์ K ตรงๆ (ถ้าช่องนั้นว่าง ก็ว่างไว้ ไม่ต้องเอาอะไรมาแสดง)
   const slipElem = document.getElementById("infoMonkSlipRight");
-  const slipVal = (monk.slipRight !== undefined && monk.slipRight !== null)
+  const slipVal = (monk.slipRight !== undefined && monk.slipRight !== null && monk.slipRight !== "")
     ? monk.slipRight.toString().trim()
-    : (monk["สิทธิ์รับใบปวารณา"] || "").toString().trim();
+    : (monk._colK || monk["สิทธิ์รับใบปวารณา"] || (monk.allowSlip ? "มีสิทธิ์" : "") || "").toString().trim();
   if (slipElem) {
-    slipElem.textContent = slipVal;
+    if (slipElem.tagName === "INPUT") {
+      slipElem.value = slipVal;
+    } else {
+      slipElem.textContent = slipVal;
+    }
+  }
+
+  // เบอร์โทรศัพท์: ดึงข้อความตามคอลัมน์ I ตรงๆ
+  const phoneElem = document.getElementById("infoMonkPhone");
+  const phoneVal = (monk.phone && monk.phone !== "-") ? monk.phone.toString().trim() : "";
+  if (phoneElem) {
+    if (phoneElem.tagName === "INPUT") {
+      phoneElem.value = phoneVal;
+    } else {
+      phoneElem.textContent = phoneVal;
+    }
   }
 
   // 13-digit ID card field
@@ -671,7 +687,7 @@ function displayInvitedMonk(monk, fromHeldCard = false) {
 
   const btnConfirm = document.getElementById("btnConfirmMonkRegistration");
   if (monk.status === "ลงทะเบียนแล้ว") {
-    btnConfirm.textContent = "✓ ลงทะเบียนแล้ว (กดเพื่ออัปเดตเลขบัตร/สถานะซ้ำ)";
+    btnConfirm.textContent = "✓ บันทึกแก้ไขข้อมูล (ที่พัก / เบอร์โทร / เลขบัตร)";
     btnConfirm.style.background = "#15803d";
   } else {
     btnConfirm.textContent = "✓ ยืนยันลงทะเบียนพระสงฆ์";
@@ -692,6 +708,15 @@ function confirmMonkRegistration(monk) {
   const newCard = (idCardInput && idCardInput.value.trim()) || (topCardInput && topCardInput.value.trim()) || (monk.idCard || "");
   const cleanNewCard = newCard.replace(/[-\s]/g, "").trim();
 
+  // Read editable hotel, phone, and slipRight inputs
+  const hotelInput = document.getElementById("infoMonkHotel");
+  const phoneInput = document.getElementById("infoMonkPhone");
+  const slipInput = document.getElementById("infoMonkSlipRight");
+
+  const editedHotel = hotelInput ? (hotelInput.tagName === "INPUT" ? hotelInput.value.trim() : hotelInput.textContent.trim()) : (monk.hotel || "");
+  const editedPhone = phoneInput ? (phoneInput.tagName === "INPUT" ? phoneInput.value.trim() : phoneInput.textContent.trim()) : (monk.phone || "");
+  const editedSlip = slipInput ? (slipInput.tagName === "INPUT" ? slipInput.value.trim() : slipInput.textContent.trim()) : (monk.slipRight || "");
+
   // ตรวจสอบความซ้ำซ้อนของเลขบัตรประชาชน (Primary Key ห้ามซ้ำกับพระรูปอื่น)
   if (cleanNewCard && cleanNewCard.length >= 10 && !cleanNewCard.includes("x")) {
     const duplicateMonk = state.monks.find(m => m.id !== monk.id && (m.idCard || "").replace(/[-\s]/g, "").trim() === cleanNewCard);
@@ -709,6 +734,12 @@ function confirmMonkRegistration(monk) {
   if (newCard) {
     monk.idCard = newCard;
   }
+  monk.hotel = editedHotel;
+  monk.phone = editedPhone;
+  monk.slipRight = editedSlip;
+  if (editedSlip) {
+    monk.allowSlip = editedSlip.includes("มีสิทธิ์") || editedSlip.includes("รับ");
+  }
 
   monk.status = "ลงทะเบียนแล้ว";
   monk.registeredAt = now;
@@ -719,7 +750,7 @@ function confirmMonkRegistration(monk) {
   renderSlipMonksTable();
   renderReportTable();
 
-  showToast(`ยืนยันการลงทะเบียน ${monk.name} สำเร็จ! ${monk.idCard ? '(บันทึกเลขบัตร: ' + monk.idCard + ')' : ''}`, "success");
+  showToast(`บันทึกข้อมูล ${monk.name} สำเร็จ! ${monk.idCard ? '(เลขบัตร: ' + monk.idCard + ')' : ''}`, "success");
   displayInvitedMonk(monk);
 
   // Send to Google Sheets if connected
@@ -732,11 +763,13 @@ function confirmMonkRegistration(monk) {
       temple: monk.temple,
       branch: monk.branch,
       vassa: monk.vassa,
+      phone: monk.phone,
       hotel: monk.hotel,
+      slipRight: monk.slipRight,
       registeredAt: now
     }).then(res => {
       if (res && res.status === "success") {
-        showToast("ซิงก์ข้อมูลและเลขบัตรประชาชนขึ้น Google Sheet สำเร็จ", "success");
+        showToast("ซิงก์ข้อมูล เลขบัตร ที่พัก และเบอร์โทร ขึ้น Google Sheet สำเร็จ", "success");
       }
     });
   }
@@ -1451,7 +1484,7 @@ function renderSlipMonksTable() {
     }
 
     const isDelivered = m.slipStatus === "รับแล้ว";
-    const statusHtml = isDelivered 
+    const statusHtml = isDelivered
       ? `<span class="status-badge registered" style="font-size:0.75rem;">✓ รับแล้ว</span>`
       : `<span class="status-badge pending" style="font-size:0.75rem;">ยังไม่ได้รับ</span>`;
 
@@ -1478,7 +1511,7 @@ function selectMonkForSlip(monk) {
   document.getElementById("slipRecTemple").value = monk.temple;
   document.getElementById("slipRecMonkName").value = monk.name;
   document.getElementById("slipRecAmount").value = monk.amount || 5000;
-  
+
   // Pre-fill receiver with default or previous registered layperson name
   if (state.laypeople.length > 0 && !document.getElementById("slipRecReceiverName").value) {
     document.getElementById("slipRecReceiverName").value = state.laypeople[0].name;
@@ -1742,7 +1775,7 @@ function renderReportTable() {
       `;
       tbody.appendChild(tr);
     });
-  } 
+  }
   else if (state.activeReportTab === "walkin") {
     thead.innerHTML = `
       <tr>
@@ -1996,7 +2029,7 @@ function stopRealtimeSync() {
   }
 }
 
-window.triggerImmediateSync = function(showFeedback = false) {
+window.triggerImmediateSync = function (showFeedback = false) {
   return fetchLiveDataFromSheet(showFeedback);
 };
 
@@ -2034,6 +2067,11 @@ async function fetchLiveDataFromSheet(notify = false) {
 
             const isAllowSlip = cleanSlip.includes("มีสิทธิ์") || cleanSlip.includes("รับ");
             const rawAmount = m["จำนวนปัจจัย"] ? parseInt(m["จำนวนปัจจัย"].toString().replace(/[^\d]/g, "")) : 0;
+            const rawPhone = (m["เบอร์โทรศัพท์"] || m.phone || "").toString().trim();
+            const cleanPhone = (rawPhone === "-" || rawPhone.toLowerCase() === "null") ? "" : rawPhone;
+            const st = (m["สถานะลงทะเบียน"] || m["สถานะการลงทะเบียน"] || m.status || "").toString().trim();
+            const sl = (m["สถานะรับใบปวารณา"] || m["สถานะใบปวารณา"] || m.slipStatus || "").toString().trim();
+
             return {
               id: m["รหัส"] || m.id,
               idCard: m["เลขบัตรประชาชน"] ? m["เลขบัตรประชาชน"].toString() : (m.idCard || ""),
@@ -2044,7 +2082,7 @@ async function fetchLiveDataFromSheet(notify = false) {
               district: m["อำเภอ"] || m.district,
               province: m["จังหวัด"] || m.province,
               vassa: m["พรรษา"] || m.vassa || 0,
-              phone: m["เบอร์โทรศัพท์"] || m.phone || "-",
+              phone: cleanPhone,
               hotel: cleanHotel,
               slipRight: cleanSlip,
               allowSlip: isAllowSlip,
@@ -2182,7 +2220,7 @@ async function fetchLiveDataFromSheet(notify = false) {
 /**
  * ล้างข้อมูลและรีเซ็ตสถานะการลงทะเบียนทั้งหมดในระบบ
  */
-window.resetAllRegistrations = function() {
+window.resetAllRegistrations = function () {
   const ans = confirm("ต้องการล้างข้อมูลและสถานะการลงทะเบียนทั้งหมดในระบบหรือไม่?\n\n- สถานะพระสงฆ์จะกลับเป็น 'ยังไม่ลงทะเบียน'\n- รายชื่อพระนอกรายชื่อ, ญาติโยม, และรายการรับใบปวารณาจะถูกล้างออก");
   if (!ans) return;
 
@@ -2277,12 +2315,12 @@ async function pushMonksToGoogleSheet() {
 
 function copyGasCodeToClipboard() {
   const scriptContent = `/**
- * ระบบลงทะเบียนเข้างานวัด - Google Apps Script Backend
+ * ระบบลงทะเบียนเข้างาน - Google Apps Script Backend
  * ดูโค้ดฉบับเต็มได้ที่ไฟล์ GoogleAppsScript_Backend.js ในโปรเจกต์
  */
 function doGet(e){return ContentService.createTextOutput(JSON.stringify({status:"success",message:"Online"})).setMimeType(ContentService.MimeType.JSON);}
 function doPost(e){return ContentService.createTextOutput(JSON.stringify({status:"success"})).setMimeType(ContentService.MimeType.JSON);}`;
-  
+
   navigator.clipboard.writeText(scriptContent).then(() => {
     showToast("คัดลอกตัวอย่างโค้ดเรียบร้อย (กรุณาใช้ไฟล์เต็ม GoogleAppsScript_Backend.js)", "success");
   });

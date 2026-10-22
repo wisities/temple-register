@@ -273,25 +273,54 @@ function registerMonk(ss, data) {
   if (!sheet) throw new Error("ไม่พบแผ่นงาน " + SHEET_NAMES.INVITED_MONKS);
 
   const values = sheet.getDataRange().getValues();
+  if (values.length <= 1) throw new Error("ไม่มีข้อมูลพระสงฆ์ในแผ่นงาน " + SHEET_NAMES.INVITED_MONKS);
+
+  // ค้นหาตำแหน่งคอลัมน์จากแถวหัวตาราง (Row 1) แบบ Dynamic
+  const headers = values[0].map(h => String(h || "").trim());
+
+  function findCol1Based(patterns, defaultCol) {
+    for (let p = 0; p < patterns.length; p++) {
+      const pat = patterns[p].toLowerCase();
+      for (let j = 0; j < headers.length; j++) {
+        if (headers[j].toLowerCase().includes(pat)) {
+          return j + 1; // 1-based index สำหรับ sheet.getRange
+        }
+      }
+    }
+    return defaultCol;
+  }
+
+  // กำหนดตำแหน่งคอลัมน์: คอลัมน์ B (2) คือ เลขบัตรประชาชน
+  const colCard = findCol1Based(["เลขบัตรประชาชน", "เลขบัตร", "บัตรประชาชน", "idcard", "citizen"], 2);
+  const colStatus = findCol1Based(["สถานะลงทะเบียน", "สถานะการลงทะเบียน", "สถานะ"], 13);
+  const colTime = findCol1Based(["เวลาที่ลงทะเบียน", "เวลาลงทะเบียน", "วันเวลา"], 14);
+  const colId = findCol1Based(["รหัส", "ลำดับที่", "ลำดับ", "id"], 1);
+  const colName = findCol1Based(["ชื่อ / ฉายา", "ชื่อพระ / ฉายา", "ชื่อพระ", "ชื่อ", "ฉายา"], 3);
+
   const searchName = (data.name || "").toString().trim().toLowerCase();
   const searchCard = (data.idCard || "").toString().replace(/[-\s]/g, "").trim();
-  const searchIdNum = parseInt((data.id || "").toString().replace("MK", ""));
+  const searchIdStr = (data.id || "").toString().trim();
+  const searchIdNum = parseInt(searchIdStr.replace(/\D/g, ""));
 
   let foundRow = -1;
   for (let i = 1; i < values.length; i++) {
-    const rowIdNum = parseInt(values[i][0]); // Column A: ลำดับที่ (1-422)
-    const rowName = values[i][7].toString().trim().toLowerCase(); // Column H (ชื่อพระ)
-    const rowCard = values[i][18].toString().replace(/[-\s]/g, "").trim(); // Column S (เลขบัตรประชาชน)
+    const rowIdRaw = String(values[i][colId - 1] || "").trim();
+    const rowIdNum = parseInt(rowIdRaw.replace(/\D/g, ""));
+    const rowName = String(values[i][colName - 1] || "").trim().toLowerCase();
+    const rowCard = String(values[i][colCard - 1] || "").replace(/[-\s]/g, "").trim();
 
-    if (searchIdNum && rowIdNum === searchIdNum) {
+    // 1. ตรวจสอบรหัสพระ (เช่น MK0001, MK1 หรือตัวเลขลำดับ)
+    if (searchIdStr && (rowIdRaw.toLowerCase() === searchIdStr.toLowerCase() || (searchIdNum && rowIdNum === searchIdNum))) {
       foundRow = i + 1;
       break;
     }
-    if (searchCard && rowCard === searchCard) {
+    // 2. ตรวจสอบเลขบัตรประชาชน
+    if (searchCard && rowCard && rowCard === searchCard) {
       foundRow = i + 1;
       break;
     }
-    if (searchName && rowName.indexOf(searchName) !== -1) {
+    // 3. ตรวจสอบชื่อพระ
+    if (searchName && rowName && (rowName === searchName || rowName.indexOf(searchName) !== -1 || searchName.indexOf(rowName) !== -1)) {
       foundRow = i + 1;
       break;
     }
@@ -304,9 +333,9 @@ function registerMonk(ss, data) {
     if (searchCard && searchCard.length >= 10 && !searchCard.includes("x")) {
       for (let i = 1; i < values.length; i++) {
         if (i + 1 !== foundRow) {
-          const otherCard = values[i][18].toString().replace(/[-\s]/g, "").trim();
+          const otherCard = String(values[i][colCard - 1] || "").replace(/[-\s]/g, "").trim();
           if (otherCard === searchCard) {
-            const otherName = values[i][7] || ("ลำดับที่ " + values[i][0]);
+            const otherName = values[i][colName - 1] || ("แถวที่ " + (i + 1));
             return {
               status: "error",
               message: "เลขบัตรประชาชนนี้ถูกบันทึกให้พระรูปอื่นแล้ว: " + otherName
@@ -317,17 +346,26 @@ function registerMonk(ss, data) {
     }
 
     // อัปเดตข้อมูลในแถวเดิมเท่านั้น (ไม่เพิ่มแถวใหม่เด็ดขาด)
-    if (data.idCard) {
-      sheet.getRange(foundRow, 19).setValue(data.idCard.toString().trim()); // Column S: เลขบัตรประชาชน
+    // บันทึกเลขบัตรประชาชนลงในคอลัมน์ B (หรือคอลัมน์เลขบัตรประชาชนที่ตรวจพบ)
+    const cardToSave = String(data.idCard || "").trim();
+    if (cardToSave) {
+      // ตั้ง Format เป็นข้อความ (@) เพื่อป้องกันการตัดเลข 0 นำหน้า หรือแปลงเป็นเลขยกกำลัง E+12
+      sheet.getRange(foundRow, colCard).setNumberFormat("@").setValue(cardToSave);
     }
-    sheet.getRange(foundRow, 21).setValue("ลงทะเบียนแล้ว"); // Column U: สถานะลงทะเบียน
-    sheet.getRange(foundRow, 22).setValue(now);               // Column V: เวลาที่ลงทะเบียน
+    if (colStatus > 0) {
+      sheet.getRange(foundRow, colStatus).setValue("ลงทะเบียนแล้ว");
+    }
+    if (colTime > 0) {
+      sheet.getRange(foundRow, colTime).setValue(now);
+    }
+
     return {
       status: "success",
       isUpdate: true,
-      message: "ลงทะเบียนพระสำเร็จ (อัปเดตแถวเดิม)",
+      message: "ลงทะเบียนพระสำเร็จ (บันทึกเลขบัตรประชาชนในคอลัมน์ B และอัปเดตแถวเดิม)",
       registeredAt: now,
-      row: foundRow
+      row: foundRow,
+      idCard: cardToSave
     };
   } else {
     return {

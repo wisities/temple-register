@@ -535,6 +535,18 @@ function triggerMonkScan(searchTerm) {
     }
   }
 
+  // 1.5 หากขณะนี้มีพระที่ได้รับนิมนต์ถูกเลือกแสดงอยู่บนหน้าจอแล้ว และเลขบัตรยังไม่เคยลงทะเบียน
+  const invitedForm = document.getElementById("monkInvitedForm");
+  if (state.currentSelectedMonk && invitedForm && invitedForm.style.display !== "none" && searchTerm.replace(/[-\s]/g, "").length >= 10) {
+    const monk = state.currentSelectedMonk;
+    monk.idCard = searchTerm.trim();
+    if (heldNotice) heldNotice.style.display = "none";
+    displayInvitedMonk(monk, true);
+    showToast(`💳 ผูกเลขบัตร ${searchTerm} กับ ${monk.name} เรียบร้อยแล้ว (กด 'ยืนยันลงทะเบียน' เพื่อบันทึกลงฐานข้อมูล)`, "success");
+    renderMonkSelectTable();
+    return;
+  }
+
   // 2. หากยังไม่พบด้วยเลขบัตร ให้ลองค้นหาด้วยชื่อพระ หรือชื่อวัดในรายนามนิมนต์
   const foundByName = state.monks.find(m => {
     const mName = (m.name || "").toLowerCase();
@@ -644,9 +656,10 @@ function displayInvitedMonk(monk, fromHeldCard = false) {
 function confirmMonkRegistration(monk) {
   const now = new Date().toLocaleString("th-TH");
 
-  // Read latest value from infoMonkIdCard
+  // Read latest value from infoMonkIdCard or monkIdCardInput
   const idCardInput = document.getElementById("infoMonkIdCard");
-  const newCard = idCardInput ? idCardInput.value.trim() : (monk.idCard || "");
+  const topCardInput = document.getElementById("monkIdCardInput");
+  const newCard = (idCardInput && idCardInput.value.trim()) || (topCardInput && topCardInput.value.trim()) || (monk.idCard || "");
   const cleanNewCard = newCard.replace(/[-\s]/g, "").trim();
 
   // ตรวจสอบความซ้ำซ้อนของเลขบัตรประชาชน (Primary Key ห้ามซ้ำกับพระรูปอื่น)

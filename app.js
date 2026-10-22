@@ -1094,25 +1094,31 @@ async function fetchLiveDataFromSheet() {
     const json = await res.json();
     if (json && json.status === "success") {
       if (json.monks && json.monks.length > 0) {
-        state.monks = json.monks.map(m => ({
-          id: m["รหัส"] || m.id,
-          idCard: m["เลขบัตรประชาชน"] ? m["เลขบัตรประชาชน"].toString() : (m.idCard || ""),
-          name: m["ชื่อ / ฉายา"] || m.name,
-          branch: m["ลำดับสาขา"] || m.branch,
-          temple: m["ชื่อวัด"] || m.temple,
-          district: m["อำเภอ"] || m.district,
-          province: m["จังหวัด"] || m.province,
-          vassa: m["พรรษา"] || m.vassa || 0,
-          phone: m["เบอร์โทรศัพท์"] || m.phone || "-",
-          hotel: m["ที่พัก / โรงแรม"] || m.hotel || "",
-          allowSlip: m["สิทธิ์รับใบปวารณา"] === "มีสิทธิ์" || m.allowSlip === true,
-          amount: m["จำนวนปัจจัย"] || m.amount || 5000,
-          status: m["สถานะลงทะเบียน"] || m.status || "ยังไม่ลงทะเบียน",
-          slipStatus: m["สถานะรับใบปวารณา"] || m.slipStatus || "ยังไม่ได้รับ",
-          registeredAt: m["เวลาที่ลงทะเบียน"] || m.registeredAt || ""
-        }));
-        saveLocal("TEMPLE_MONKS_DATA", state.monks);
-        populateMonkQuickSelect();
+        // ตรวจสอบว่าข้อมูลใน Google Sheet ไม่ใช่เครื่องหมายคำถาม ?????
+        const sampleName = json.monks[0]["ชื่อ / ฉายา"] || json.monks[0].name || "";
+        if (!sampleName.includes("???")) {
+          state.monks = json.monks.map(m => ({
+            id: m["รหัส"] || m.id,
+            idCard: m["เลขบัตรประชาชน"] ? m["เลขบัตรประชาชน"].toString() : (m.idCard || ""),
+            name: m["ชื่อ / ฉายา"] || m.name,
+            branch: m["ลำดับสาขา"] || m.branch,
+            temple: m["ชื่อวัด"] || m.temple,
+            district: m["อำเภอ"] || m.district,
+            province: m["จังหวัด"] || m.province,
+            vassa: m["พรรษา"] || m.vassa || 0,
+            phone: m["เบอร์โทรศัพท์"] || m.phone || "-",
+            hotel: m["ที่พัก / โรงแรม"] || m.hotel || "",
+            allowSlip: m["สิทธิ์รับใบปวารณา"] === "มีสิทธิ์" || m.allowSlip === true,
+            amount: m["จำนวนปัจจัย"] || m.amount || 5000,
+            status: m["สถานะลงทะเบียน"] || m.status || "ยังไม่ลงทะเบียน",
+            slipStatus: m["สถานะรับใบปวารณา"] || m.slipStatus || "ยังไม่ได้รับ",
+            registeredAt: m["เวลาที่ลงทะเบียน"] || m.registeredAt || ""
+          }));
+          saveLocal("TEMPLE_MONKS_DATA", state.monks);
+          populateMonkQuickSelect();
+        } else {
+          console.warn("ข้อมูลใน Google Sheet ยังเป็น ????? ข้ามการอัปเดตทับเพื่อรักษาภาษาไทยที่ถูกต้องในเว็บ");
+        }
       }
 
       if (json.walkinMonks && json.walkinMonks.length > 0) {
@@ -1184,11 +1190,11 @@ async function callGasApi(payload) {
   if (!state.gasUrl) return null;
 
   try {
-    // Use no-cors or standard POST
+    // ใช้ text/plain;charset=utf-8 เพื่อป้องกัน CORS preflight และรักษาการเข้ารหัสภาษาไทย
     const res = await fetch(state.gasUrl, {
       method: "POST",
-      mode: "no-cors", // Allows posting without preflight rejection in Google Apps Script
-      headers: { "Content-Type": "application/json" },
+      mode: "no-cors",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify(payload)
     });
     return { status: "success" };
@@ -1210,13 +1216,16 @@ async function pushMonksToGoogleSheet() {
   showToast("กำลังส่งข้อมูล 422 รายนามขึ้น Google Sheet กรุณารอสักครู่...", "info");
 
   try {
+    // ใช้ window.INITIAL_MONKS_DATA ซึ่งเป็นภาษาไทยแท้แน่นอน
+    const cleanMonks = window.INITIAL_MONKS_DATA || state.monks;
+
     await fetch(state.gasUrl, {
       method: "POST",
       mode: "no-cors",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify({
         action: "batch_import_monks",
-        monks: state.monks
+        monks: cleanMonks
       })
     });
 

@@ -223,10 +223,11 @@ function importMonksBatch(ss, monks) {
     sheet = ss.getSheetByName(SHEET_NAMES.INVITED_MONKS);
   }
 
-  // Clear existing data rows except header
-  const lastRow = sheet.getLastRow();
-  if (lastRow > 1) {
-    sheet.deleteRows(2, lastRow - 1);
+  // Clear existing data rows except header safely
+  const maxRows = sheet.getMaxRows();
+  const maxCols = sheet.getMaxColumns();
+  if (maxRows > 1) {
+    sheet.getRange(2, 1, maxRows - 1, maxCols).clearContent();
   }
 
   if (!monks || monks.length === 0) return 0;

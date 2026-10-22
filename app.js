@@ -71,15 +71,19 @@ function initData() {
     const saved = savedMap[im.id];
     const monkNum = parseInt(im.id.replace("MK", "")) || 1;
     const realPhoto = `assets/monks/monk_row_${monkNum + 1}.jpg`;
+    const colKValue = (im.slipRight || im._colK || im["สิทธิ์รับใบปวารณา"] || (im.allowSlip ? "มีสิทธิ์" : "") || "").toString().trim();
+    const colIValue = (im.phone && im.phone !== "-") ? im.phone.toString().trim() : "";
+    const colJValue = (im.hotel && !im.hotel.includes("สิรินธร") && !im.hotel.includes("ธรรมรุจ")) ? im.hotel.toString().trim() : "";
+
     if (saved) {
       return {
         ...im,
         ...saved,
         photo: realPhoto,
         idCard: (saved.idCard && !saved.idCard.startsWith("1-0000-00000-")) ? saved.idCard : (im.idCard || ""),
-        hotel: (saved.hotel !== undefined && saved.hotel !== null && saved.hotel !== "") ? saved.hotel : (im.hotel || ""),
-        slipRight: (saved.slipRight !== undefined && saved.slipRight !== null && saved.slipRight !== "") ? saved.slipRight : (im.slipRight || im._colK || im["สิทธิ์รับใบปวารณา"] || (im.allowSlip ? "มีสิทธิ์" : "") || ""),
-        phone: (saved.phone !== undefined && saved.phone !== null && saved.phone !== "" && saved.phone !== "-") ? saved.phone : (im.phone || ""),
+        hotel: (saved.hotel !== undefined && saved.hotel !== null && saved.hotel !== "") ? saved.hotel : colJValue,
+        slipRight: colKValue,
+        phone: (saved.phone !== undefined && saved.phone !== null && saved.phone !== "" && saved.phone !== "-") ? saved.phone : colIValue,
         amount: saved.amount || 0
       };
     }
@@ -87,9 +91,9 @@ function initData() {
       ...im,
       photo: realPhoto,
       idCard: im.idCard || "",
-      hotel: im.hotel || "",
-      slipRight: im.slipRight || im._colK || im["สิทธิ์รับใบปวารณา"] || (im.allowSlip ? "มีสิทธิ์" : "") || "",
-      phone: (im.phone && im.phone !== "-") ? im.phone : "",
+      hotel: colJValue,
+      slipRight: colKValue,
+      phone: colIValue,
       amount: 0
     };
   });
@@ -629,39 +633,27 @@ function displayInvitedMonk(monk, fromHeldCard = false) {
   document.getElementById("infoMonkProvince").textContent = `${monk.province} (${monk.branch || 'สาขากลาง'})`;
   document.getElementById("infoMonkVassa").textContent = `${monk.vassa} พรรษา`;
 
-  // ที่พัก / โรงแรม: ดึงข้อความตามคอลัมน์ J ตรงๆ (ถ้าช่องนั้นว่าง ก็ว่างไว้ สามารถพิมพ์แก้ไขได้)
+  // ที่พัก / โรงแรม: แสดงตามคอลัมน์ J (แก้ไขได้ ถ้าไม่มีข้อความใดในนั้นก็ว่างไว้)
   const hotelElem = document.getElementById("infoMonkHotel");
   const hotelVal = (monk.hotel || "").toString().trim();
   if (hotelElem) {
-    if (hotelElem.tagName === "INPUT") {
-      hotelElem.value = hotelVal;
-    } else {
-      hotelElem.textContent = hotelVal;
-    }
+    hotelElem.value = hotelVal;
   }
 
-  // สิทธิ์รับใบปวารณา: ดึงข้อความตามคอลัมน์ K ตรงๆ (ถ้าช่องนั้นว่าง ก็ว่างไว้ ไม่ต้องเอาอะไรมาแสดง)
+  // สิทธิ์รับใบปวารณา: แสดงตามข้อความในคอลัมน์ K (Fixed แก้ไขไม่ได้ ถ้าไม่มีข้อความใดในนั้นก็ว่างไว้)
   const slipElem = document.getElementById("infoMonkSlipRight");
   const slipVal = (monk.slipRight !== undefined && monk.slipRight !== null && monk.slipRight !== "")
     ? monk.slipRight.toString().trim()
     : (monk._colK || monk["สิทธิ์รับใบปวารณา"] || (monk.allowSlip ? "มีสิทธิ์" : "") || "").toString().trim();
   if (slipElem) {
-    if (slipElem.tagName === "INPUT") {
-      slipElem.value = slipVal;
-    } else {
-      slipElem.textContent = slipVal;
-    }
+    slipElem.textContent = slipVal;
   }
 
-  // เบอร์โทรศัพท์: ดึงข้อความตามคอลัมน์ I ตรงๆ
+  // เบอร์โทรศัพท์ติดต่อ: แสดงตามคอลัมน์ I (แก้ไขได้ ถ้าไม่มีข้อความใดในนั้นก็ว่างไว้)
   const phoneElem = document.getElementById("infoMonkPhone");
   const phoneVal = (monk.phone && monk.phone !== "-") ? monk.phone.toString().trim() : "";
   if (phoneElem) {
-    if (phoneElem.tagName === "INPUT") {
-      phoneElem.value = phoneVal;
-    } else {
-      phoneElem.textContent = phoneVal;
-    }
+    phoneElem.value = phoneVal;
   }
 
   // 13-digit ID card field
@@ -708,14 +700,12 @@ function confirmMonkRegistration(monk) {
   const newCard = (idCardInput && idCardInput.value.trim()) || (topCardInput && topCardInput.value.trim()) || (monk.idCard || "");
   const cleanNewCard = newCard.replace(/[-\s]/g, "").trim();
 
-  // Read editable hotel, phone, and slipRight inputs
+  // Read editable hotel and phone inputs (slipRight is Fixed from Column K)
   const hotelInput = document.getElementById("infoMonkHotel");
   const phoneInput = document.getElementById("infoMonkPhone");
-  const slipInput = document.getElementById("infoMonkSlipRight");
 
-  const editedHotel = hotelInput ? (hotelInput.tagName === "INPUT" ? hotelInput.value.trim() : hotelInput.textContent.trim()) : (monk.hotel || "");
-  const editedPhone = phoneInput ? (phoneInput.tagName === "INPUT" ? phoneInput.value.trim() : phoneInput.textContent.trim()) : (monk.phone || "");
-  const editedSlip = slipInput ? (slipInput.tagName === "INPUT" ? slipInput.value.trim() : slipInput.textContent.trim()) : (monk.slipRight || "");
+  const editedHotel = hotelInput ? hotelInput.value.trim() : (monk.hotel || "");
+  const editedPhone = phoneInput ? phoneInput.value.trim() : (monk.phone || "");
 
   // ตรวจสอบความซ้ำซ้อนของเลขบัตรประชาชน (Primary Key ห้ามซ้ำกับพระรูปอื่น)
   if (cleanNewCard && cleanNewCard.length >= 10 && !cleanNewCard.includes("x")) {
@@ -736,10 +726,6 @@ function confirmMonkRegistration(monk) {
   }
   monk.hotel = editedHotel;
   monk.phone = editedPhone;
-  monk.slipRight = editedSlip;
-  if (editedSlip) {
-    monk.allowSlip = editedSlip.includes("มีสิทธิ์") || editedSlip.includes("รับ");
-  }
 
   monk.status = "ลงทะเบียนแล้ว";
   monk.registeredAt = now;

@@ -757,7 +757,6 @@ function receiveSlip(ss, data) {
   sheet.appendRow(row);
 
   // อัปเดตสถานะใน sheet พระสงฆ์ที่นิมนต์ให้เป็น "รับแล้ว" ด้วย
-  const monkSheet = ss.getSheetByName(SHEET_NAMES.INVITED_MONKS);
   if (monkSheet && data.monkId) {
     const values = monkSheet.getDataRange().getValues();
     for (let i = 1; i < values.length; i++) {

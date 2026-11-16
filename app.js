@@ -1984,12 +1984,15 @@ function checkAndPopulateLayperson(searchTerm) {
     }
   }
 
-  // 2. ตรวจสอบกับญาติโยม (Primary Key: เลขบัตรประชาชน -> ถ้าไม่มีใช้เบอร์โทรศัพท์)
+  // 2. ตรวจสอบกับญาติโยม (Primary Key: เลขบัตรประชาชน -> ถ้าไม่มีใช้เบอร์โทรศัพท์, รองรับเลข 0 นำหน้าที่ Google Sheet ตัดออก)
+  const cleanNoZero = cleanTerm.replace(/^0+/, "");
   const existing = state.laypeople.find(l => {
     const lCard = (l.idCard || "").toString().replace(/[-\s]/g, "").trim().toLowerCase();
     const lPhone = (l.phone || "").toString().replace(/[-\s]/g, "").trim().toLowerCase();
     const lId = (l.id || "").toString().trim().toLowerCase();
-    return (lCard && lCard === cleanTerm) || (lPhone && lPhone !== "-" && lPhone === cleanTerm) || (lId && lId === cleanTerm);
+    const matchCard = lCard && (lCard === cleanTerm || (cleanNoZero.length >= 6 && lCard.replace(/^0+/, "") === cleanNoZero));
+    const matchPhone = lPhone && lPhone !== "-" && (lPhone === cleanTerm || (cleanNoZero.length >= 8 && lPhone.replace(/^0+/, "") === cleanNoZero));
+    return matchCard || matchPhone || (lId && lId === cleanTerm);
   });
 
   const badge = document.getElementById("layIdBadge");
@@ -2146,14 +2149,16 @@ function confirmLayRegistration() {
   const layPhoto = state.currentLayPhoto || (previewSrc.startsWith("data:image") ? previewSrc : "");
 
   // 4. ตรวจสอบข้อมูลเดิมด้วย Primary Key (เลขบัตรประชาชน หรือเบอร์โทรศัพท์)
+  const cleanIdNoZero = cleanId.replace(/^0+/, "");
+  const cleanPhoneNoZero = cleanPhone.replace(/^0+/, "");
   const existingIndex = state.laypeople.findIndex(l => {
     const lCard = (l.idCard || "").toString().replace(/[-\s]/g, "").trim();
     const lPhone = (l.phone || "").toString().replace(/[-\s]/g, "").trim();
     if (cleanId) {
-      return lCard && lCard === cleanId;
+      return lCard && (lCard === cleanId || (cleanIdNoZero.length >= 6 && lCard.replace(/^0+/, "") === cleanIdNoZero));
     }
     if (cleanPhone) {
-      return !lCard && lPhone && lPhone === cleanPhone;
+      return !lCard && lPhone && (lPhone === cleanPhone || (cleanPhoneNoZero.length >= 8 && lPhone.replace(/^0+/, "") === cleanPhoneNoZero));
     }
     return state.editingLayId && l.id === state.editingLayId;
   });
@@ -3074,7 +3079,8 @@ async function fetchLiveDataFromSheet(notify = false) {
 
           const lCardRaw = (l["เลขบัตรประชาชน"] || l.idCard || "").toString();
           const lCardClean = lCardRaw.replace(/[-\s]/g, "").trim();
-          const lPhoneRaw = (l["เบอร์โทรศัพท์"] || l["เบอร์โทร"] || l.phone || "-").toString();
+          let lPhoneRaw = (l["เบอร์โทรศัพท์"] || l["เบอร์โทร"] || l.phone || "-").toString().trim();
+          if (/^[689]\d{8}$/.test(lPhoneRaw)) lPhoneRaw = "0" + lPhoneRaw;
           const lPhoneClean = lPhoneRaw.replace(/[-\s]/g, "").trim();
           const rawSheetPhoto = l["ลิงก์รูปถ่าย"] || l["รูปถ่าย"] || l["รูป"] || l._colJ || l[""] || l.photoUrl || l.photo || "";
           const photoCandidate = (rawSheetPhoto && (String(rawSheetPhoto).startsWith("http") || String(rawSheetPhoto).startsWith("data:image")))

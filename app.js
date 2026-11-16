@@ -1886,6 +1886,19 @@ function checkAndPopulateLayperson(searchTerm) {
     if (document.getElementById("layPhone")) document.getElementById("layPhone").value = existing.phone || "";
     if (document.getElementById("layEmergencyPhone")) document.getElementById("layEmergencyPhone").value = existing.emergencyPhone || "";
 
+    const photoEl = document.getElementById("layCardPhotoPreview");
+    const photoBadge = document.getElementById("layCardPhotoBadge");
+    if (photoEl) {
+      const resolved = normalizeDriveImageUrl(existing.photo || "");
+      photoEl.onerror = () => { photoEl.src = "assets/receiver_avatar.jpg"; };
+      photoEl.src = resolved || "assets/receiver_avatar.jpg";
+      if (photoBadge) {
+        photoBadge.className = resolved ? "status-badge registered" : "status-badge available";
+        photoBadge.textContent = resolved ? "🪪 รูปจากฐานข้อมูล" : "รูปตัวอย่าง / รออ่านบัตร";
+      }
+    }
+    state.currentLayPhoto = existing.photo || "";
+
     if (badge) {
       badge.style.display = "inline-block";
       badge.style.background = "#dbeafe";
@@ -2012,6 +2025,8 @@ function confirmLayRegistration() {
 
   const now = new Date().toLocaleString("th-TH");
   const primaryKeyLabel = cleanId ? `เลขบัตร: ${idCard}` : `เบอร์โทร: ${phoneRaw}`;
+  const previewSrc = document.getElementById("layCardPhotoPreview")?.src || "";
+  const layPhoto = state.currentLayPhoto || (previewSrc.startsWith("data:image") ? previewSrc : "");
 
   // 4. ตรวจสอบข้อมูลเดิมด้วย Primary Key (เลขบัตรประชาชน หรือเบอร์โทรศัพท์)
   const existingIndex = state.laypeople.findIndex(l => {
@@ -2041,6 +2056,7 @@ function confirmLayRegistration() {
     existing.address = address;
     existing.phone = phone;
     existing.emergencyPhone = emergencyPhone;
+    if (layPhoto) existing.photo = layPhoto;
     existing.registeredAt = now;
 
     // กรองแถวซ้ำใน memory ให้เหลือเพียงแถวเดียว
@@ -2076,6 +2092,7 @@ function confirmLayRegistration() {
         address: address,
         phone: phone,
         emergencyPhone: emergencyPhone,
+        photoBase64: layPhoto,
         isUpdate: true,
         registeredAt: now
       }).then(res => {
@@ -2096,6 +2113,7 @@ function confirmLayRegistration() {
       address: address,
       phone: phone,
       emergencyPhone: emergencyPhone,
+      photo: layPhoto,
       registeredAt: now
     };
 
@@ -2119,6 +2137,7 @@ function confirmLayRegistration() {
       callGasApi({
         action: "register_layperson",
         ...newLay,
+        photoBase64: layPhoto,
         isUpdate: false
       }).then(res => {
         if (res && res.status === "success") {
@@ -2913,6 +2932,17 @@ async function fetchLiveDataFromSheet(notify = false) {
 
       // 3. ญาติโยม (ดีดูพลิเคตโดยใช้รหัสญาติโยมเป็น Primary Key ห้ามซ้ำ)
       if (Array.isArray(json.laypeople)) {
+        const localLayPhotoMap = {};
+        (state.laypeople || []).forEach(ll => {
+          const lc = (ll.idCard || "").toString().replace(/[-\s]/g, "").trim();
+          const lp = (ll.phone || "").toString().replace(/[-\s]/g, "").trim();
+          if (ll.photo) {
+            if (lc) localLayPhotoMap[lc] = ll.photo;
+            if (lp && lp !== "-") localLayPhotoMap[lp] = ll.photo;
+            if (ll.id) localLayPhotoMap[ll.id] = ll.photo;
+          }
+        });
+
         const uniqueLay = [];
         const seenIds = new Set();
 
@@ -2921,15 +2951,25 @@ async function fetchLiveDataFromSheet(notify = false) {
           if (!lId || seenIds.has(lId.toLowerCase())) return;
           seenIds.add(lId.toLowerCase());
 
+          const lCardRaw = (l["เลขบัตรประชาชน"] || l.idCard || "").toString();
+          const lCardClean = lCardRaw.replace(/[-\s]/g, "").trim();
+          const lPhoneRaw = (l["เบอร์โทรศัพท์"] || l["เบอร์โทร"] || l.phone || "-").toString();
+          const lPhoneClean = lPhoneRaw.replace(/[-\s]/g, "").trim();
+          const rawSheetPhoto = l["ลิงก์รูปถ่าย"] || l["รูปถ่าย"] || l["รูป"] || l._colJ || l[""] || l.photoUrl || l.photo || "";
+          const photoCandidate = (rawSheetPhoto && (String(rawSheetPhoto).startsWith("http") || String(rawSheetPhoto).startsWith("data:image")))
+            ? normalizeDriveImageUrl(rawSheetPhoto)
+            : (localLayPhotoMap[lCardClean] || localLayPhotoMap[lPhoneClean] || localLayPhotoMap[lId] || "");
+
           uniqueLay.push({
             id: lId,
-            idCard: (l["เลขบัตรประชาชน"] || l.idCard || "").toString(),
+            idCard: lCardRaw,
             name: l["ชื่อ - นามสกุล"] || l.name || "",
             birthday: l["วันเกิด"] || l.birthday || "",
             gender: l["เพศ"] || l.gender || "ชาย",
             address: l["ที่อยู่"] || l.address || "",
-            phone: l["เบอร์โทรศัพท์"] || l["เบอร์โทร"] || l.phone || "-",
+            phone: lPhoneRaw,
             emergencyPhone: l["เบอร์ติดต่อฉุกเฉิน"] || l.emergencyPhone || "-",
+            photo: photoCandidate,
             registeredAt: l["เวลาที่ลงทะเบียน"] || l["เวลาลงทะเบียน"] || l.registeredAt || ""
           });
         });

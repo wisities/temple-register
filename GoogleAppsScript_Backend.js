@@ -207,7 +207,7 @@ function setupSheets(ss) {
   let sheet3 = ss.getSheetByName(SHEET_NAMES.LAYPEOPLE);
   if (!sheet3) sheet3 = ss.insertSheet(SHEET_NAMES.LAYPEOPLE);
   const h3 = [
-    ["ลำดับที่", "รหัส", "เลขบัตรประชาชน", "ชื่อ - นามสกุล", "วันเกิด", "เพศ", "ที่อยู่", "เบอร์โทรศัพท์", "เบอร์ติดต่อฉุกเฉิน", "เวลาที่ลงทะเบียน"]
+    ["ลำดับที่", "รหัส", "เลขบัตรประชาชน", "ชื่อ - นามสกุล", "วันเกิด", "เพศ", "ที่อยู่", "เบอร์โทรศัพท์", "เบอร์ติดต่อฉุกเฉิน", "เวลาที่ลงทะเบียน", "ลิงก์รูปถ่าย"]
   ];
   sheet3.getRange(1, 1, 1, h3[0].length).setValues(h3)
     .setFontWeight("bold")
@@ -585,6 +585,9 @@ function registerLayperson(ss, data) {
     setupSheets(ss);
     sheet = ss.getSheetByName(SHEET_NAMES.LAYPEOPLE);
   }
+  if (!sheet.getRange(1, 10).getValue()) {
+    sheet.getRange(1, 10).setValue("ลิงก์รูปถ่าย").setFontWeight("bold");
+  }
 
   const now = Utilities.formatDate(new Date(), "Asia/Bangkok", "yyyy-MM-dd HH:mm:ss");
   const targetId = String(data.id || "").trim();
@@ -619,6 +622,14 @@ function registerLayperson(ss, data) {
   if (foundRowIndex > 0) {
     // พบข้อมูลเดิม -> ทำการ UPDATE แถวเดิม
     const existingId = values[foundRowIndex - 1][0] || targetId;
+    let photoUrl = values[foundRowIndex - 1][9] || "";
+    if (data.photoBase64 && String(data.photoBase64).indexOf("data:image") !== -1) {
+      try {
+        photoUrl = savePhotoToDrive(data.photoBase64, "lay_" + (cleanId || existingId));
+      } catch (imgErr) {
+        console.warn("Layperson photo upload error:", imgErr);
+      }
+    }
 
     const updatedRow = [
       existingId,
@@ -629,7 +640,8 @@ function registerLayperson(ss, data) {
       data.address || "",
       data.phone || "",
       data.emergencyPhone || "",
-      now
+      now,
+      photoUrl
     ];
 
     sheet.getRange(foundRowIndex, 1, 1, updatedRow.length).setValues([updatedRow]);
@@ -658,6 +670,15 @@ function registerLayperson(ss, data) {
     finalId = "LP" + String(maxNum + 1).padStart(4, "0");
   }
 
+  let newPhotoUrl = "";
+  if (data.photoBase64 && String(data.photoBase64).indexOf("data:image") !== -1) {
+    try {
+      newPhotoUrl = savePhotoToDrive(data.photoBase64, "lay_" + (cleanId || finalId));
+    } catch (imgErr) {
+      console.warn("Layperson photo upload error:", imgErr);
+    }
+  }
+
   const newRow = [
     finalId,
     data.idCard || "", // เลขบัตรประชาชน (เว้นว่างได้)
@@ -667,7 +688,8 @@ function registerLayperson(ss, data) {
     data.address || "",
     data.phone || "",
     data.emergencyPhone || "",
-    now
+    now,
+    newPhotoUrl
   ];
 
   sheet.appendRow(newRow);

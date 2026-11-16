@@ -2362,7 +2362,11 @@ function renderSlipMonksTable() {
       tr.className = "selected";
     }
 
-    const isDelivered = m.slipStatus === "รับแล้ว";
+    const hasSlipRecord = (state.slips || []).some(s =>
+      (s.monkId && m.id && s.monkId === m.id) ||
+      (s.monkName === m.name && s.temple === m.temple)
+    );
+    const isDelivered = m.slipStatus === "รับแล้ว" || hasSlipRecord;
     const statusHtml = isDelivered
       ? `<span class="status-badge registered" style="font-size:0.75rem;">✓ รับแล้ว</span>`
       : `<span class="status-badge pending" style="font-size:0.75rem;">ยังไม่ได้รับ</span>`;

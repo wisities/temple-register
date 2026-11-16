@@ -678,10 +678,6 @@ function getFilteredMonksList() {
   return [...walkins, ...invited];
 }
 
-    return matchName && matchBranch && matchTemple;
-  });
-}
-
 // Backward compatibility for existing calls
 function populateMonkQuickSelect() {
   renderMonkSelectTable();

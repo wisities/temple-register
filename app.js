@@ -385,12 +385,19 @@ const SmartCardService = {
       renderMonkSelectTable();
 
       const matches = getFilteredMonksList();
-      if (matches.length === 1 && !matches[0]._isWalkin) {
-        const monk = state.monks.find(m => m.id === matches[0].id);
-        if (monk) {
-          if (!monk.idCard) monk.idCard = cid;
-          displayInvitedMonk(monk, true);
-          showToast(`✓ พบบัตรตรงกับรายชื่อ: ${monk.name} (${monk.temple})`, "success");
+      if (matches.length === 1) {
+        if (matches[0]._isWalkin) {
+          const walkin = state.walkinMonks.find(w => w.id === matches[0].id) || matches[0];
+          if (cardObj.photo && !walkin.photo) walkin.photo = cardObj.photo;
+          displayWalkinMonkForm(walkin.idCard || walkin.id, walkin, cardObj);
+          showToast(`✓ พบข้อมูลพระนอกรายชื่อ: ${walkin.name} (${walkin.temple})`, "info");
+        } else {
+          const monk = state.monks.find(m => m.id === matches[0].id);
+          if (monk) {
+            if (!monk.idCard) monk.idCard = cid;
+            displayInvitedMonk(monk, true);
+            showToast(`✓ พบบัตรตรงกับรายชื่อ: ${monk.name} (${monk.temple})`, "success");
+          }
         }
       } else if (matches.length > 0) {
         showToast(`🔍 กรองรายชื่อจากบัตรได้ ${matches.length} รูป กรุณาคลิกเลือกจากลิสต์`, "info");
@@ -752,7 +759,7 @@ function renderMonkSelectTable(customList = null) {
       if (heldNotice) heldNotice.style.display = "none";
 
       if (isWalkin) {
-        displayWalkinMonkForm(m.idCard || m.id, m);
+        displayWalkinMonkForm(m.idCard || m.id, m, state.pendingMonkCardData || null);
       } else {
         // แสดงข้อมูลพระที่เลือกในแบบฟอร์ม 1.3 (เพื่อเพิ่มหรือแก้ไขเลขบัตรประชาชนลงฐานข้อมูลได้)
         displayInvitedMonk(m, false);
@@ -1515,6 +1522,10 @@ function saveWalkinMonk() {
   }
 
   const now = new Date().toLocaleString("th-TH");
+  const photoSrc = document.getElementById("walkinMonkPhoto")?.src || "";
+  const walkinPhoto = (state.pendingMonkCardData && state.pendingMonkCardData.photo)
+    ? state.pendingMonkCardData.photo
+    : (photoSrc.startsWith("data:image") ? photoSrc : "");
 
   // 3. ตรวจสอบว่ามีอยู่ใน 'ลงทะเบียนพระนอกรายชื่อ' แล้วหรือไม่ (เช็ค Primary Key)
   const existingIndex = state.walkinMonks.findIndex(w => {
@@ -1531,6 +1542,7 @@ function saveWalkinMonk() {
     existing.vassa = vassa;
     existing.province = province || "ไม่ระบุ";
     existing.phone = phone || "-";
+    if (walkinPhoto) existing.photo = walkinPhoto;
     existing.status = "ลงทะเบียนแล้ว";
     existing.registeredAt = now;
 
@@ -1586,6 +1598,7 @@ function saveWalkinMonk() {
       vassa: vassa,
       province: province || "ไม่ระบุ",
       phone: phone || "-",
+      photo: walkinPhoto,
       status: "ลงทะเบียนแล้ว",
       registeredAt: now
     };

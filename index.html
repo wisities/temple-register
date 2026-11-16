@@ -11,7 +11,7 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Prompt:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Sarabun:wght@300;400;500;600;700&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=20261116_3">
 </head>
 
 <body>
@@ -324,18 +324,20 @@
                       ยังไม่มีรูปภาพ
                     </div>
                   </div>
-                  <div style="display: flex; gap: 0.3rem; width: 100%;">
-                    <button type="button" id="btnWalkinStartCamera" class="btn btn-secondary btn-sm" style="flex: 1; font-size: 0.72rem; padding: 0.25rem 0.35rem;" onclick="toggleEntityCamera('walkin')">
-                      📷 เปิดกล้อง
-                    </button>
-                    <button type="button" id="btnWalkinSnapPhoto" class="btn btn-monk btn-sm" style="flex: 1; font-size: 0.72rem; padding: 0.25rem 0.35rem;" onclick="snapEntityPhoto('walkin')" disabled>
-                      📸 ถ่ายรูป
+                  <div id="walkinCameraControls" style="display: flex; flex-direction: column; gap: 0.3rem; width: 100%;">
+                    <div style="display: flex; gap: 0.3rem; width: 100%;">
+                      <button type="button" id="btnWalkinStartCamera" class="btn btn-secondary btn-sm" style="flex: 1; font-size: 0.72rem; padding: 0.25rem 0.35rem;" onclick="toggleEntityCamera('walkin')">
+                        📷 เปิดกล้อง
+                      </button>
+                      <button type="button" id="btnWalkinSnapPhoto" class="btn btn-monk btn-sm" style="flex: 1; font-size: 0.72rem; padding: 0.25rem 0.35rem;" onclick="snapEntityPhoto('walkin')" disabled>
+                        📸 ถ่ายรูป
+                      </button>
+                    </div>
+                    <input type="file" id="walkinPhotoFileInput" accept="image/*" style="display: none;">
+                    <button type="button" class="btn btn-secondary btn-sm" style="width: 100%; font-size: 0.72rem; padding: 0.22rem 0.4rem;" onclick="document.getElementById('walkinPhotoFileInput').click()">
+                      📁 เลือกรูปภาพ
                     </button>
                   </div>
-                  <input type="file" id="walkinPhotoFileInput" accept="image/*" style="display: none;">
-                  <button type="button" class="btn btn-secondary btn-sm" style="width: 100%; font-size: 0.72rem; padding: 0.22rem 0.4rem;" onclick="document.getElementById('walkinPhotoFileInput').click()">
-                    📁 เลือกรูปภาพ
-                  </button>
                 </div>
                 <div class="profile-info-grid">
                   <div class="info-item full-width">
@@ -478,18 +480,20 @@
                   </div>
                 </div>
                 <span id="layCardPhotoBadge" class="status-badge available" style="font-size: 0.72rem; text-align: center;">รออ่านบัตร / ถ่ายรูป</span>
-                <div style="display: flex; gap: 0.3rem; width: 100%;">
-                  <button type="button" id="btnLayStartCamera" class="btn btn-secondary btn-sm" style="flex: 1; font-size: 0.72rem; padding: 0.25rem 0.35rem;" onclick="toggleEntityCamera('lay')">
-                    📷 เปิดกล้อง
-                  </button>
-                  <button type="button" id="btnLaySnapPhoto" class="btn btn-lay btn-sm" style="flex: 1; font-size: 0.72rem; padding: 0.25rem 0.35rem;" onclick="snapEntityPhoto('lay')" disabled>
-                    📸 ถ่ายรูป
+                <div id="layCameraControls" style="display: flex; flex-direction: column; gap: 0.3rem; width: 100%;">
+                  <div style="display: flex; gap: 0.3rem; width: 100%;">
+                    <button type="button" id="btnLayStartCamera" class="btn btn-secondary btn-sm" style="flex: 1; font-size: 0.72rem; padding: 0.25rem 0.35rem;" onclick="toggleEntityCamera('lay')">
+                      📷 เปิดกล้อง
+                    </button>
+                    <button type="button" id="btnLaySnapPhoto" class="btn btn-lay btn-sm" style="flex: 1; font-size: 0.72rem; padding: 0.25rem 0.35rem;" onclick="snapEntityPhoto('lay')" disabled>
+                      📸 ถ่ายรูป
+                    </button>
+                  </div>
+                  <input type="file" id="layPhotoFileInput" accept="image/*" style="display: none;">
+                  <button type="button" class="btn btn-secondary btn-sm" style="width: 100%; font-size: 0.72rem; padding: 0.22rem 0.4rem;" onclick="document.getElementById('layPhotoFileInput').click()">
+                    📁 เลือกรูปภาพ
                   </button>
                 </div>
-                <input type="file" id="layPhotoFileInput" accept="image/*" style="display: none;">
-                <button type="button" class="btn btn-secondary btn-sm" style="width: 100%; font-size: 0.72rem; padding: 0.22rem 0.4rem;" onclick="document.getElementById('layPhotoFileInput').click()">
-                  📁 เลือกรูปภาพ
-                </button>
               </div>
 
               <div class="profile-info-grid" style="flex: 1; margin-bottom: 0;">
@@ -1088,8 +1092,8 @@
   <div id="toastContainer" class="toast-container"></div>
 
   <!-- Scripts with Cache Buster -->
-  <script src="monks_data.js?v=20261022_3"></script>
-  <script src="app.js?v=20261022_3"></script>
+  <script src="monks_data.js?v=20261116_3"></script>
+  <script src="app.js?v=20261116_3"></script>
 </body>
 
 </html>

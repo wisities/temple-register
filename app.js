@@ -119,15 +119,18 @@ function normalizeDriveImageUrl(url) {
   if (!s) return "";
   if (s.startsWith("data:image")) return s;
   const m1 = s.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
-  if (m1 && m1[1]) return `https://drive.google.com/thumbnail?id=${m1[1]}&sz=w400`;
+  if (m1 && m1[1]) return `https://lh3.googleusercontent.com/d/${m1[1]}=s400`;
   const m2 = s.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-  if (m2 && m2[1] && s.includes("drive.google.com")) return `https://drive.google.com/thumbnail?id=${m2[1]}&sz=w400`;
+  if (m2 && m2[1] && s.includes("drive.google.com")) return `https://lh3.googleusercontent.com/d/${m2[1]}=s400`;
   return s;
 }
 
-function setPhotoPreview(imgId, emptyId, src) {
+function setPhotoPreview(imgId, emptyId, src, cameraControlsId = "") {
   const imgEl = document.getElementById(imgId);
   const emptyEl = document.getElementById(emptyId);
+  const controlsId = cameraControlsId || (imgId === "walkinMonkPhoto" ? "walkinCameraControls" : (imgId === "layCardPhotoPreview" ? "layCameraControls" : ""));
+  const controlsEl = controlsId ? document.getElementById(controlsId) : null;
+
   const cleanSrc = (src || "").toString().trim();
   const hasPhoto = cleanSrc !== "" && !cleanSrc.includes("monk_avatar.jpg") && !cleanSrc.includes("receiver_avatar.jpg");
   if (imgEl) {
@@ -135,6 +138,7 @@ function setPhotoPreview(imgId, emptyId, src) {
       imgEl.onerror = () => {
         imgEl.style.display = "none";
         if (emptyEl) emptyEl.style.display = "block";
+        if (controlsEl) controlsEl.style.display = "flex";
       };
       imgEl.src = cleanSrc;
       imgEl.style.display = "block";
@@ -144,6 +148,8 @@ function setPhotoPreview(imgId, emptyId, src) {
     }
   }
   if (emptyEl) emptyEl.style.display = hasPhoto ? "none" : "block";
+  // ถ้ามีรูปจากบัตร/ฐานข้อมูลแล้ว ไม่ต้องแสดงปุ่มถ่ายกล้อง; แสดงเฉพาะกรณีที่ไม่มีรูป
+  if (controlsEl) controlsEl.style.display = hasPhoto ? "none" : "flex";
 }
 
 const entityStreams = { walkin: null, lay: null };
@@ -2079,7 +2085,7 @@ function setupLayWorkflow() {
     inputCard.addEventListener("input", (e) => {
       const val = e.target.value.trim();
       const cleanVal = val.replace(/[-\s]/g, "");
-      if (cleanVal.length >= 10 && !cleanVal.includes("x")) {
+      if (cleanVal.length >= 9 && !cleanVal.includes("x")) {
         checkAndPopulateLayperson(val);
       }
     });

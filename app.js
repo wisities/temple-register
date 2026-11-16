@@ -82,6 +82,17 @@ function closeResultPopup() {
 }
 window.closeResultPopup = closeResultPopup;
 
+function normalizeDriveImageUrl(url) {
+  const s = (url || "").toString().trim();
+  if (!s) return "";
+  if (s.startsWith("data:image")) return s;
+  const m1 = s.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (m1 && m1[1]) return `https://drive.google.com/thumbnail?id=${m1[1]}&sz=w400`;
+  const m2 = s.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (m2 && m2[1] && s.includes("drive.google.com")) return `https://drive.google.com/thumbnail?id=${m2[1]}&sz=w400`;
+  return s;
+}
+
 function extractThaiGivenName(fullName, explicitFirstName = "") {
   if (explicitFirstName && explicitFirstName.trim()) {
     return explicitFirstName.trim();
@@ -1413,7 +1424,12 @@ function displayWalkinMonkForm(searchCard, walkinObj = null, cardData = null) {
 
   const walkinPhotoEl = document.getElementById("walkinMonkPhoto");
   if (walkinPhotoEl) {
-    walkinPhotoEl.src = (cardData && cardData.photo) ? cardData.photo : ((existing && existing.photo) ? existing.photo : "assets/monk_avatar.jpg");
+    const rawPhoto = (cardData && cardData.photo)
+      ? cardData.photo
+      : ((existing && existing.photo) ? existing.photo : "");
+    const resolvedPhoto = normalizeDriveImageUrl(rawPhoto);
+    walkinPhotoEl.onerror = () => { walkinPhotoEl.src = "assets/monk_avatar.jpg"; };
+    walkinPhotoEl.src = resolvedPhoto || "assets/monk_avatar.jpg";
   }
 
   if (existing) {
@@ -2845,6 +2861,15 @@ async function fetchLiveDataFromSheet(notify = false) {
 
       // 2. พระนอกรายชื่อ (ดีดูพลิเคตโดยใช้เลขบัตรประชาชนเป็น Primary Key ห้ามซ้ำ)
       if (Array.isArray(json.walkinMonks)) {
+        const localWalkinPhotoMap = {};
+        (state.walkinMonks || []).forEach(lw => {
+          const lc = (lw.idCard || "").toString().replace(/[-\s]/g, "").trim();
+          if (lw.photo) {
+            if (lc) localWalkinPhotoMap[lc] = lw.photo;
+            if (lw.id) localWalkinPhotoMap[lw.id] = lw.photo;
+          }
+        });
+
         const uniqueWalkins = [];
         const seenCards = new Set();
         const seenIds = new Set();
@@ -2863,6 +2888,11 @@ async function fetchLiveDataFromSheet(notify = false) {
             seenIds.add(wId);
           }
 
+          const rawSheetPhoto = w["ลิงก์รูปถ่าย"] || w["รูปถ่าย"] || w["รูป"] || w._colJ || w[""] || w.photoUrl || w.photo || "";
+          const photoCandidate = (rawSheetPhoto && (String(rawSheetPhoto).startsWith("http") || String(rawSheetPhoto).startsWith("data:image")))
+            ? normalizeDriveImageUrl(rawSheetPhoto)
+            : (localWalkinPhotoMap[cleanCard] || localWalkinPhotoMap[wId] || "");
+
           uniqueWalkins.push({
             id: wId,
             idCard: rawCard,
@@ -2871,6 +2901,7 @@ async function fetchLiveDataFromSheet(notify = false) {
             vassa: w["พรรษา"] || w.vassa || 0,
             province: w["จังหวัด"] || w.province || "ไม่ระบุ",
             phone: w["เบอร์โทรศัพท์"] || w["เบอร์โทร"] || w.phone || "-",
+            photo: photoCandidate,
             status: w["สถานะลงทะเบียน"] || w["สถานะ"] || "ลงทะเบียนแล้ว",
             registeredAt: w["เวลาที่ลงทะเบียน"] || w["เวลาลงทะเบียน"] || w.registeredAt || ""
           });

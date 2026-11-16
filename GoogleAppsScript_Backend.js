@@ -420,6 +420,9 @@ function registerWalkinMonk(ss, data) {
     setupSheets(ss);
     sheet = ss.getSheetByName(SHEET_NAMES.WALKIN_MONKS);
   }
+  if (!sheet.getRange(1, 10).getValue()) {
+    sheet.getRange(1, 10).setValue("ลิงก์รูปถ่าย").setFontWeight("bold");
+  }
 
   const now = Utilities.formatDate(new Date(), "Asia/Bangkok", "yyyy-MM-dd HH:mm:ss");
   const newId = "WK" + Utilities.formatDate(new Date(), "Asia/Bangkok", "yyyyMMdd-HHmmss");

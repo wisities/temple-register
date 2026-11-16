@@ -208,10 +208,50 @@ const SmartCardService = {
   ws: null,
   isConnected: false,
   agentUrl: "ws://localhost:8084",
+  lastCardInserted: false,
+  lastReadAt: 0,
+  isReadingCard: false,
 
   init() {
     this.connect();
+    this.startAutoPoll();
     this.setupListeners();
+  },
+
+  startAutoPoll() {
+    setInterval(() => {
+      fetch("http://localhost:8084/api/status", { method: "GET" })
+        .then(res => res.json())
+        .then(st => {
+          if (st && st.agentOnline) {
+            if (!this.isConnected) {
+              this.isConnected = true;
+              state.smartCardConnected = true;
+              this.updateUI("connected", "เครื่องอ่านบัตร: เชื่อมต่อแล้ว (พร้อมอ่านบัตร)");
+            }
+            const inserted = !!st.cardInserted;
+            if (inserted && !this.lastCardInserted && !this.isReadingCard && (Date.now() - this.lastReadAt > 1500)) {
+              this.isReadingCard = true;
+              fetch("http://localhost:8084/api/card", { method: "GET" })
+                .then(r => r.json())
+                .then(card => {
+                  if (card && card.status === "success" && card.cid) {
+                    this.lastReadAt = Date.now();
+                    this.handleCardMessage(card);
+                  }
+                })
+                .catch(() => { })
+                .finally(() => {
+                  this.isReadingCard = false;
+                });
+            }
+            this.lastCardInserted = inserted;
+          }
+        })
+        .catch(() => {
+          this.lastCardInserted = false;
+        });
+    }, 800);
   },
 
   connect() {
@@ -229,6 +269,11 @@ const SmartCardService = {
       this.ws.onmessage = (event) => {
         try {
           const raw = JSON.parse(event.data);
+          if (raw && (raw.cid || (raw.data && raw.data.cid))) {
+            if (Date.now() - this.lastReadAt < 1500) return;
+            this.lastReadAt = Date.now();
+            this.lastCardInserted = true;
+          }
           this.handleCardMessage(raw);
         } catch (e) {
           console.log("Card message:", event.data);

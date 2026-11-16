@@ -22,7 +22,8 @@ const state = {
   webcamStream: null,
   receiverPhotoBase64: "",
   activeReportTab: "monks",
-  smartCardConnected: false
+  smartCardConnected: false,
+  isAdminAuthenticated: false
 };
 window.state = state;
 
@@ -587,13 +588,73 @@ function setupNavigation() {
     });
   });
 
-  // Clicking the status pill navigates to settings
-  document.getElementById("gsheetStatusPill").addEventListener("click", () => {
+  // Clicking the status pill navigates to settings (if admin)
+  document.getElementById("gsheetStatusPill")?.addEventListener("click", () => {
     switchTab("tab-settings");
   });
 }
 
+function openAdminLoginModal() {
+  if (state.isAdminAuthenticated) {
+    switchTab("tab-settings");
+    return;
+  }
+  const modal = document.getElementById("adminLoginModal");
+  const errEl = document.getElementById("adminLoginError");
+  const pwdEl = document.getElementById("adminPasswordInput");
+  if (errEl) errEl.style.display = "none";
+  if (pwdEl) pwdEl.value = "";
+  if (modal) modal.style.display = "flex";
+  if (pwdEl) setTimeout(() => pwdEl.focus(), 50);
+}
+window.openAdminLoginModal = openAdminLoginModal;
+
+function closeAdminLoginModal() {
+  const modal = document.getElementById("adminLoginModal");
+  if (modal) modal.style.display = "none";
+}
+window.closeAdminLoginModal = closeAdminLoginModal;
+
+function submitAdminLogin() {
+  const pwdEl = document.getElementById("adminPasswordInput");
+  const errEl = document.getElementById("adminLoginError");
+  const pwd = pwdEl ? pwdEl.value : "";
+
+  if (pwd === "admin1234") {
+    state.isAdminAuthenticated = true;
+    closeAdminLoginModal();
+    const navSettings = document.getElementById("navTabSettings");
+    if (navSettings) navSettings.style.display = "flex";
+    const adminText = document.getElementById("adminAccessText");
+    if (adminText) adminText.textContent = "Admin (เปิดใช้งาน)";
+    switchTab("tab-settings");
+    showToast("✓ เข้าสู่โหมดผู้ดูแลระบบ (Admin) สำเร็จ", "success");
+  } else {
+    if (errEl) errEl.style.display = "block";
+    if (pwdEl) {
+      pwdEl.value = "";
+      pwdEl.focus();
+    }
+  }
+}
+window.submitAdminLogin = submitAdminLogin;
+
+function logoutAdminMode() {
+  state.isAdminAuthenticated = false;
+  const navSettings = document.getElementById("navTabSettings");
+  if (navSettings) navSettings.style.display = "none";
+  const adminText = document.getElementById("adminAccessText");
+  if (adminText) adminText.textContent = "ตั้งค่าระบบ (Admin)";
+  switchTab("tab-monk");
+  showToast("🔒 ออกจากโหมด Admin แล้ว", "info");
+}
+window.logoutAdminMode = logoutAdminMode;
+
 function switchTab(tabId) {
+  if (tabId === "tab-settings" && !state.isAdminAuthenticated) {
+    openAdminLoginModal();
+    return;
+  }
   // Update nav tabs
   document.querySelectorAll(".nav-tab").forEach(t => {
     t.classList.toggle("active", t.getAttribute("data-tab") === tabId);

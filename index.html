@@ -36,11 +36,10 @@
           <span class="status-dot" id="cardStatusDot"></span>
           <span id="cardStatusPillText">เครื่องอ่านบัตร: ตรวจสอบสถานะ</span>
         </div>
-        <div id="gsheetStatusPill" class="gsheet-status-pill" title="คลิกเพื่อตั้งค่าการเชื่อมต่อ Google Sheets">
-          <span class="status-dot"></span>
-          <span id="gsheetStatusText">โหมดออฟไลน์ / Local Data</span>
-          <span style="font-size: 0.75rem; color: #64748b;">(⚙️ ตั้งค่า)</span>
-        </div>
+        <button type="button" id="btnAdminAccess" class="gsheet-status-pill" onclick="openAdminLoginModal()" title="เข้าสู่หน้าตั้งค่าสำหรับผู้ดูแลระบบ (Admin)">
+          <span>🔐</span>
+          <span id="adminAccessText">ตั้งค่าระบบ (Admin)</span>
+        </button>
       </div>
     </div>
   </header>
@@ -64,7 +63,7 @@
         <span class="tab-num">4</span>
         <span>รายงานสรุป & แดชบอร์ด</span>
       </button>
-      <button class="nav-tab" data-tab="tab-settings" style="margin-left: auto;">
+      <button class="nav-tab" id="navTabSettings" data-tab="tab-settings" style="margin-left: auto; display: none;">
         <span>⚙️ เชื่อมต่อ Google Sheets</span>
       </button>
     </div>
@@ -764,9 +763,18 @@
         <div class="banner-left">
           <div class="banner-badge-num">⚙️</div>
           <div class="banner-title">
-            <h2>ตั้งค่าเชื่อมต่อ Google Sheets</h2>
+            <h2>ตั้งค่าเชื่อมต่อ Google Sheets (Admin)</h2>
             <p>บันทึกและซิงก์ข้อมูลลงบน Google Sheet ของคุณแบบเรียลไทม์</p>
           </div>
+        </div>
+        <div class="banner-right" style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
+          <div id="gsheetStatusPill" class="gsheet-status-pill" title="สถานะการเชื่อมต่อ Google Sheets">
+            <span class="status-dot"></span>
+            <span id="gsheetStatusText">โหมดออฟไลน์ / Local Data</span>
+          </div>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="logoutAdminMode()">
+            🔒 ออกจากโหมด Admin
+          </button>
         </div>
       </div>
 
@@ -981,6 +989,36 @@
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" onclick="runCardReaderDiagnostics()">🔄 ตรวจสอบการเชื่อมต่อใหม่</button>
         <button type="button" class="btn btn-secondary" onclick="closeCardReaderModal()">ปิดหน้าต่าง</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Admin Login Modal -->
+  <div id="adminLoginModal" class="modal-backdrop" style="display: none; z-index: 9998;">
+    <div class="modal-dialog" style="max-width: 420px; width: 92%;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <span style="font-size: 1.25rem;">🔐</span>
+          <h3 style="margin: 0; font-size: 1.1rem; color: #1e293b;">เข้าสู่ระบบผู้ดูแลระบบ (Admin)</h3>
+        </div>
+        <button type="button" class="modal-close" onclick="closeAdminLoginModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.88rem; color: #475569; margin-bottom: 0.75rem;">
+          กรุณากรอกรหัสผ่านผู้ดูแลระบบเพื่อเข้าถึงหน้าตั้งค่าและเชื่อมต่อ Google Sheets
+        </p>
+        <div class="id-input-group" style="margin-bottom: 0;">
+          <label for="adminPasswordInput">รหัสผ่าน Admin:</label>
+          <input type="password" id="adminPasswordInput" class="input-control" placeholder="กรอกรหัสผ่าน..."
+            onkeydown="if(event.key==='Enter'){submitAdminLogin();}">
+        </div>
+        <div id="adminLoginError" style="display: none; color: #dc2626; font-size: 0.82rem; margin-top: 0.5rem; font-weight: 600;">
+          ❌ รหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeAdminLoginModal()">ยกเลิก</button>
+        <button type="button" class="btn btn-monk" onclick="submitAdminLogin()">🔓 เข้าสู่ระบบ Admin</button>
       </div>
     </div>
   </div>

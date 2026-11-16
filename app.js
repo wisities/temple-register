@@ -39,6 +39,7 @@ document.addEventListener("DOMContentLoaded", () => {
   updateAllKpis();
   renderReportTable();
   clearRegistrationScreens();
+  setupEntityPhotoFileInputs();
 
   // Set input field value
   const inputElem = document.getElementById("settingsGasUrl");
@@ -54,6 +55,37 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 });
+
+function setupEntityPhotoFileInputs() {
+  const bindInput = (inputId, prefix) => {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    input.addEventListener("change", (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const dataUrl = ev.target.result;
+        if (prefix === "walkin") {
+          setPhotoPreview("walkinMonkPhoto", "walkinPhotoEmpty", dataUrl);
+          if (!state.pendingMonkCardData) state.pendingMonkCardData = {};
+          state.pendingMonkCardData.photo = dataUrl;
+        } else {
+          setPhotoPreview("layCardPhotoPreview", "layPhotoEmpty", dataUrl);
+          state.currentLayPhoto = dataUrl;
+          const badge = document.getElementById("layCardPhotoBadge");
+          if (badge) {
+            badge.className = "status-badge registered";
+            badge.textContent = "📁 เลือกรูปจากไฟล์";
+          }
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+  bindInput("walkinPhotoFileInput", "walkin");
+  bindInput("layPhotoFileInput", "lay");
+}
 
 function showResultPopup(title, subtitle, detailLines = []) {
   const modal = document.getElementById("registrationSuccessModal");
@@ -92,6 +124,99 @@ function normalizeDriveImageUrl(url) {
   if (m2 && m2[1] && s.includes("drive.google.com")) return `https://drive.google.com/thumbnail?id=${m2[1]}&sz=w400`;
   return s;
 }
+
+function setPhotoPreview(imgId, emptyId, src) {
+  const imgEl = document.getElementById(imgId);
+  const emptyEl = document.getElementById(emptyId);
+  const cleanSrc = (src || "").toString().trim();
+  const hasPhoto = cleanSrc !== "" && !cleanSrc.includes("monk_avatar.jpg") && !cleanSrc.includes("receiver_avatar.jpg");
+  if (imgEl) {
+    if (hasPhoto) {
+      imgEl.onerror = () => {
+        imgEl.style.display = "none";
+        if (emptyEl) emptyEl.style.display = "block";
+      };
+      imgEl.src = cleanSrc;
+      imgEl.style.display = "block";
+    } else {
+      imgEl.src = "";
+      imgEl.style.display = "none";
+    }
+  }
+  if (emptyEl) emptyEl.style.display = hasPhoto ? "none" : "block";
+}
+
+const entityStreams = { walkin: null, lay: null };
+
+async function toggleEntityCamera(prefix) {
+  const isWalkin = prefix === "walkin";
+  const video = document.getElementById(isWalkin ? "walkinWebcamVideo" : "layWebcamVideo");
+  const img = document.getElementById(isWalkin ? "walkinMonkPhoto" : "layCardPhotoPreview");
+  const empty = document.getElementById(isWalkin ? "walkinPhotoEmpty" : "layPhotoEmpty");
+  const btnStart = document.getElementById(isWalkin ? "btnWalkinStartCamera" : "btnLayStartCamera");
+  const btnSnap = document.getElementById(isWalkin ? "btnWalkinSnapPhoto" : "btnLaySnapPhoto");
+
+  if (entityStreams[prefix]) {
+    entityStreams[prefix].getTracks().forEach(t => t.stop());
+    entityStreams[prefix] = null;
+    if (video) video.style.display = "none";
+    if (btnStart) btnStart.textContent = "📷 เปิดกล้อง";
+    if (btnSnap) btnSnap.disabled = true;
+    const hasImg = img && img.getAttribute("src");
+    if (img) img.style.display = hasImg ? "block" : "none";
+    if (empty) empty.style.display = hasImg ? "none" : "block";
+    return;
+  }
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
+    entityStreams[prefix] = stream;
+    if (video) {
+      video.srcObject = stream;
+      video.style.display = "block";
+    }
+    if (img) img.style.display = "none";
+    if (empty) empty.style.display = "none";
+    if (btnStart) btnStart.textContent = "✖ ปิดกล้อง";
+    if (btnSnap) btnSnap.disabled = false;
+  } catch (err) {
+    showToast("ไม่สามารถเปิดกล้องเว็บแคมได้ กรุณาอนุญาตสิทธิ์กล้องหรือเลือกไฟล์รูปภาพ", "warning");
+  }
+}
+window.toggleEntityCamera = toggleEntityCamera;
+
+function snapEntityPhoto(prefix) {
+  const isWalkin = prefix === "walkin";
+  const video = document.getElementById(isWalkin ? "walkinWebcamVideo" : "layWebcamVideo");
+  const canvas = document.getElementById(isWalkin ? "walkinPhotoCanvas" : "layPhotoCanvas");
+  if (!video || !canvas) return;
+
+  const w = Math.min(video.videoWidth || 480, 480);
+  const h = Math.round(((video.videoHeight || 640) / (video.videoWidth || 480)) * w);
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(video, 0, 0, w, h);
+  const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
+
+  toggleEntityCamera(prefix); // stop stream
+
+  if (isWalkin) {
+    setPhotoPreview("walkinMonkPhoto", "walkinPhotoEmpty", dataUrl);
+    if (!state.pendingMonkCardData) state.pendingMonkCardData = {};
+    state.pendingMonkCardData.photo = dataUrl;
+  } else {
+    setPhotoPreview("layCardPhotoPreview", "layPhotoEmpty", dataUrl);
+    state.currentLayPhoto = dataUrl;
+    const badge = document.getElementById("layCardPhotoBadge");
+    if (badge) {
+      badge.className = "status-badge registered";
+      badge.textContent = "📸 ถ่ายจากเว็บแคม";
+    }
+  }
+  showToast("✓ ถ่ายรูปเรียบร้อยแล้ว!", "success");
+}
+window.snapEntityPhoto = snapEntityPhoto;
 
 function extractThaiGivenName(fullName, explicitFirstName = "") {
   if (explicitFirstName && explicitFirstName.trim()) {
@@ -1374,8 +1499,7 @@ function clearMonkSearchAndScreen() {
   monkFilterState.cardGiven = "";
   state.pendingMonkCid = "";
   state.pendingMonkCardData = null;
-  const walkinPhoto = document.getElementById("walkinMonkPhoto");
-  if (walkinPhoto) walkinPhoto.src = "assets/monk_avatar.jpg";
+  setPhotoPreview("walkinMonkPhoto", "walkinPhotoEmpty", "");
   const cardInd = document.getElementById("cardStatusIndicator");
   if (cardInd) cardInd.style.display = "none";
   resetMonkWorkflow();
@@ -1428,8 +1552,7 @@ function displayWalkinMonkForm(searchCard, walkinObj = null, cardData = null) {
       ? cardData.photo
       : ((existing && existing.photo) ? existing.photo : "");
     const resolvedPhoto = normalizeDriveImageUrl(rawPhoto);
-    walkinPhotoEl.onerror = () => { walkinPhotoEl.src = "assets/monk_avatar.jpg"; };
-    walkinPhotoEl.src = resolvedPhoto || "assets/monk_avatar.jpg";
+    setPhotoPreview("walkinMonkPhoto", "walkinPhotoEmpty", resolvedPhoto);
   }
 
   if (existing) {
@@ -1729,12 +1852,11 @@ function clearLayForm() {
   const genderEl = document.getElementById("layGender");
   if (genderEl) genderEl.value = "ชาย";
 
-  const photoEl = document.getElementById("layCardPhotoPreview");
-  if (photoEl) photoEl.src = "assets/receiver_avatar.jpg";
+  setPhotoPreview("layCardPhotoPreview", "layPhotoEmpty", "");
   const photoBadge = document.getElementById("layCardPhotoBadge");
   if (photoBadge) {
     photoBadge.className = "status-badge available";
-    photoBadge.textContent = "รูปตัวอย่าง / รออ่านบัตร";
+    photoBadge.textContent = "รออ่านบัตร / ถ่ายรูป";
   }
 
   state.editingLayId = null;
@@ -1777,8 +1899,7 @@ function onLayCardRead(cardData) {
     if (addrEl) addrEl.value = cardData.address;
   }
   if (cardData.photo) {
-    const photoEl = document.getElementById("layCardPhotoPreview");
-    if (photoEl) photoEl.src = cardData.photo;
+    setPhotoPreview("layCardPhotoPreview", "layPhotoEmpty", cardData.photo);
     const photoBadge = document.getElementById("layCardPhotoBadge");
     if (photoBadge) {
       photoBadge.className = "status-badge registered";
@@ -1886,16 +2007,12 @@ function checkAndPopulateLayperson(searchTerm) {
     if (document.getElementById("layPhone")) document.getElementById("layPhone").value = existing.phone || "";
     if (document.getElementById("layEmergencyPhone")) document.getElementById("layEmergencyPhone").value = existing.emergencyPhone || "";
 
-    const photoEl = document.getElementById("layCardPhotoPreview");
     const photoBadge = document.getElementById("layCardPhotoBadge");
-    if (photoEl) {
-      const resolved = normalizeDriveImageUrl(existing.photo || "");
-      photoEl.onerror = () => { photoEl.src = "assets/receiver_avatar.jpg"; };
-      photoEl.src = resolved || "assets/receiver_avatar.jpg";
-      if (photoBadge) {
-        photoBadge.className = resolved ? "status-badge registered" : "status-badge available";
-        photoBadge.textContent = resolved ? "🪪 รูปจากฐานข้อมูล" : "รูปตัวอย่าง / รออ่านบัตร";
-      }
+    const resolved = normalizeDriveImageUrl(existing.photo || "");
+    setPhotoPreview("layCardPhotoPreview", "layPhotoEmpty", resolved);
+    if (photoBadge) {
+      photoBadge.className = resolved ? "status-badge registered" : "status-badge available";
+      photoBadge.textContent = resolved ? "🪪 รูปจากฐานข้อมูล" : "รออ่านบัตร / ถ่ายรูป";
     }
     state.currentLayPhoto = existing.photo || "";
 
@@ -2314,6 +2431,8 @@ async function toggleCamera() {
     video.srcObject = stream;
     video.style.display = "block";
     img.style.display = "none";
+    const emptyEl = document.getElementById("slipPhotoEmpty");
+    if (emptyEl) emptyEl.style.display = "none";
     btnStart.textContent = "🛑 ปิดกล้อง";
     btnSnap.disabled = false;
     document.getElementById("cameraBadge").textContent = "กล้องพร้อมใช้งาน";
@@ -2340,6 +2459,8 @@ function snapPhoto() {
   img.src = state.receiverPhotoBase64;
   img.style.display = "block";
   video.style.display = "none";
+  const emptyEl = document.getElementById("slipPhotoEmpty");
+  if (emptyEl) emptyEl.style.display = "none";
 
   // Stop stream after snap
   state.webcamStream.getTracks().forEach(track => track.stop());

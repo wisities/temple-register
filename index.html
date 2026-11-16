@@ -314,8 +314,28 @@
                   id="walkinBannerDesc">ไม่พบในรายชื่อนิมนต์ กรุณากรอกข้อมูลเพื่อบันทึกลงระบบ</span>
               </div>
               <div class="monk-profile-wrapper">
-                <div class="profile-avatar-wrap">
-                  <img id="walkinMonkPhoto" src="assets/monk_avatar.jpg" alt="รูปพระสงฆ์">
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 0.45rem; flex-shrink: 0; width: 155px;">
+                  <div class="profile-avatar-wrap" style="width: 150px; height: 180px; border-radius: 10px; overflow: hidden; border: 2px solid #d6bfa9; background: #fdf8f0; display: flex; align-items: center; justify-content: center; position: relative;">
+                    <video id="walkinWebcamVideo" autoplay playsinline style="display: none; width: 100%; height: 100%; object-fit: cover;"></video>
+                    <img id="walkinMonkPhoto" src="" alt="รูปพระสงฆ์" style="display: none; width: 100%; height: 100%; object-fit: cover;">
+                    <canvas id="walkinPhotoCanvas" style="display: none;"></canvas>
+                    <div id="walkinPhotoEmpty" style="text-align: center; color: #94a3b8; font-size: 0.8rem; padding: 0.5rem;">
+                      <div style="font-size: 1.6rem; margin-bottom: 0.2rem;">📷</div>
+                      ยังไม่มีรูปภาพ
+                    </div>
+                  </div>
+                  <div style="display: flex; gap: 0.3rem; width: 100%;">
+                    <button type="button" id="btnWalkinStartCamera" class="btn btn-secondary btn-sm" style="flex: 1; font-size: 0.72rem; padding: 0.25rem 0.35rem;" onclick="toggleEntityCamera('walkin')">
+                      📷 เปิดกล้อง
+                    </button>
+                    <button type="button" id="btnWalkinSnapPhoto" class="btn btn-monk btn-sm" style="flex: 1; font-size: 0.72rem; padding: 0.25rem 0.35rem;" onclick="snapEntityPhoto('walkin')" disabled>
+                      📸 ถ่ายรูป
+                    </button>
+                  </div>
+                  <input type="file" id="walkinPhotoFileInput" accept="image/*" style="display: none;">
+                  <button type="button" class="btn btn-secondary btn-sm" style="width: 100%; font-size: 0.72rem; padding: 0.22rem 0.4rem;" onclick="document.getElementById('walkinPhotoFileInput').click()">
+                    📁 เลือกรูปภาพ
+                  </button>
                 </div>
                 <div class="profile-info-grid">
                   <div class="info-item full-width">
@@ -447,11 +467,29 @@
             </div>
 
             <div class="monk-profile-wrapper" style="margin-bottom: 1.5rem;">
-              <div style="display: flex; flex-direction: column; align-items: center; gap: 0.45rem; flex-shrink: 0;">
-                <div class="profile-avatar-wrap" style="width: 140px; height: 175px; border-radius: 10px; overflow: hidden; border: 2px solid #bae6fd; background: #f8fafc; display: flex; align-items: center; justify-content: center;">
-                  <img id="layCardPhotoPreview" src="assets/receiver_avatar.jpg" alt="รูปถ่ายจากบัตรประชาชน" style="width: 100%; height: 100%; object-fit: cover;">
+              <div style="display: flex; flex-direction: column; align-items: center; gap: 0.45rem; flex-shrink: 0; width: 155px;">
+                <div class="profile-avatar-wrap" style="width: 150px; height: 180px; border-radius: 10px; overflow: hidden; border: 2px solid #bae6fd; background: #f8fafc; display: flex; align-items: center; justify-content: center; position: relative;">
+                  <video id="layWebcamVideo" autoplay playsinline style="display: none; width: 100%; height: 100%; object-fit: cover;"></video>
+                  <img id="layCardPhotoPreview" src="" alt="รูปถ่ายจากบัตรประชาชน" style="display: none; width: 100%; height: 100%; object-fit: cover;">
+                  <canvas id="layPhotoCanvas" style="display: none;"></canvas>
+                  <div id="layPhotoEmpty" style="text-align: center; color: #94a3b8; font-size: 0.8rem; padding: 0.5rem;">
+                    <div style="font-size: 1.6rem; margin-bottom: 0.2rem;">📷</div>
+                    ยังไม่มีรูปภาพ
+                  </div>
                 </div>
-                <span id="layCardPhotoBadge" class="status-badge available" style="font-size: 0.72rem; text-align: center;">รูปตัวอย่าง / รออ่านบัตร</span>
+                <span id="layCardPhotoBadge" class="status-badge available" style="font-size: 0.72rem; text-align: center;">รออ่านบัตร / ถ่ายรูป</span>
+                <div style="display: flex; gap: 0.3rem; width: 100%;">
+                  <button type="button" id="btnLayStartCamera" class="btn btn-secondary btn-sm" style="flex: 1; font-size: 0.72rem; padding: 0.25rem 0.35rem;" onclick="toggleEntityCamera('lay')">
+                    📷 เปิดกล้อง
+                  </button>
+                  <button type="button" id="btnLaySnapPhoto" class="btn btn-lay btn-sm" style="flex: 1; font-size: 0.72rem; padding: 0.25rem 0.35rem;" onclick="snapEntityPhoto('lay')" disabled>
+                    📸 ถ่ายรูป
+                  </button>
+                </div>
+                <input type="file" id="layPhotoFileInput" accept="image/*" style="display: none;">
+                <button type="button" class="btn btn-secondary btn-sm" style="width: 100%; font-size: 0.72rem; padding: 0.22rem 0.4rem;" onclick="document.getElementById('layPhotoFileInput').click()">
+                  📁 เลือกรูปภาพ
+                </button>
               </div>
 
               <div class="profile-info-grid" style="flex: 1; margin-bottom: 0;">
@@ -643,9 +681,13 @@
                 </div>
                 <div class="camera-preview-box" id="cameraBox">
                   <video id="webcamVideo" autoplay playsinline style="display: none;"></video>
-                  <img id="receiverPhotoPreview" src="assets/receiver_avatar.jpg" alt="รูปผู้มารับ">
+                  <img id="receiverPhotoPreview" src="" alt="รูปผู้มารับ" style="display: none;">
                   <canvas id="photoCanvas" style="display: none;"></canvas>
-                  <span class="camera-overlay-badge" id="cameraBadge">รูปตัวอย่าง</span>
+                  <div id="slipPhotoEmpty" style="text-align: center; color: #94a3b8; font-size: 0.85rem; padding: 1rem;">
+                    <div style="font-size: 1.8rem; margin-bottom: 0.25rem;">📷</div>
+                    ยังไม่มีรูปภาพ
+                  </div>
+                  <span class="camera-overlay-badge" id="cameraBadge">ยังไม่มีรูปภาพ</span>
                 </div>
                 <div style="display: flex; gap: 0.35rem; width: 100%;">
                   <button type="button" id="btnStartCamera" class="btn btn-secondary btn-sm" style="flex: 1;">

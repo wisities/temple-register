@@ -195,7 +195,7 @@ function setupSheets(ss) {
   let sheet2 = ss.getSheetByName(SHEET_NAMES.WALKIN_MONKS);
   if (!sheet2) sheet2 = ss.insertSheet(SHEET_NAMES.WALKIN_MONKS);
   const h2 = [
-    ["ลำดับที่", "รหัส", "เลขบัตรประชาชน", "ชื่อ / ฉายา", "ชื่อวัด", "พรรษา", "จังหวัด", "เบอร์โทรศัพท์", "สถานะลงทะเบียน", "เวลาที่ลงทะเบียน"]
+    ["ลำดับที่", "รหัส", "เลขบัตรประชาชน", "ชื่อ / ฉายา", "ชื่อวัด", "พรรษา", "จังหวัด", "เบอร์โทรศัพท์", "สถานะลงทะเบียน", "เวลาที่ลงทะเบียน", "ลิงก์รูปถ่าย"]
   ];
   sheet2.getRange(1, 1, 1, h2[0].length).setValues(h2)
     .setFontWeight("bold")
@@ -457,6 +457,14 @@ function registerWalkinMonk(ss, data) {
     // พบข้อมูลเดิม -> ทำการ UPDATE แถวแรกที่พบ
     const primaryRowIndex = matchingRowIndices[0];
     const existingId = values[primaryRowIndex - 1][0] || data.id || newId;
+    let photoUrl = values[primaryRowIndex - 1][9] || "";
+    if (data.photoBase64 && String(data.photoBase64).indexOf("data:image") !== -1) {
+      try {
+        photoUrl = savePhotoToDrive(data.photoBase64, "walkin_" + (cleanId || existingId));
+      } catch (imgErr) {
+        console.warn("Walkin photo upload error:", imgErr);
+      }
+    }
 
     const updatedRow = [
       existingId,
@@ -467,7 +475,8 @@ function registerWalkinMonk(ss, data) {
       data.province || "",
       data.phone || "",
       "ลงทะเบียนแล้ว",
-      now
+      now,
+      photoUrl
     ];
 
     sheet.getRange(primaryRowIndex, 1, 1, updatedRow.length).setValues([updatedRow]);
@@ -493,6 +502,15 @@ function registerWalkinMonk(ss, data) {
   }
 
   // ไม่พบข้อมูลเดิม -> เพิ่มแถวใหม่ (INSERT)
+  let newPhotoUrl = "";
+  if (data.photoBase64 && String(data.photoBase64).indexOf("data:image") !== -1) {
+    try {
+      newPhotoUrl = savePhotoToDrive(data.photoBase64, "walkin_" + (cleanId || data.id || newId));
+    } catch (imgErr) {
+      console.warn("Walkin photo upload error:", imgErr);
+    }
+  }
+
   const newRow = [
     data.id || newId,
     data.idCard || cleanId,
@@ -502,7 +520,8 @@ function registerWalkinMonk(ss, data) {
     data.province || "",
     data.phone || "",
     "ลงทะเบียนแล้ว",
-    now
+    now,
+    newPhotoUrl
   ];
 
   sheet.appendRow(newRow);

@@ -1579,6 +1579,7 @@ function saveWalkinMonk() {
         vassa: vassa,
         province: province || "ไม่ระบุ",
         phone: phone || "-",
+        photoBase64: walkinPhoto,
         isUpdate: true,
         registeredAt: now
       }).then(res => {
@@ -1626,6 +1627,7 @@ function saveWalkinMonk() {
         action: "register_walkin_monk",
         ...newMonk,
         idCard: cleanId,
+        photoBase64: walkinPhoto,
         isUpdate: false
       }).then(res => {
         if (res && res.status === "success") {

@@ -3171,20 +3171,38 @@ async function fetchLiveDataFromSheet(notify = false) {
 
       // 4. ใบปวารณา (หากชีตว่าง ให้ล้างข้อมูลในเครื่องให้ตรงกัน)
       if (Array.isArray(json.slips)) {
-        state.slips = json.slips.map(s => ({
-          txId: s["รหัสบันทึก"] || s.txId,
-          monkId: s["รหัสพระ"] || s.monkId,
-          temple: s["ชื่อวัด"] || s.temple,
-          monkName: s["ชื่อพระ / ฉายา"] || s.monkName,
-          vassa: s["พรรษา"] || s.vassa,
-          amount: s["จำนวนปัจจัย (บาท)"] || s.amount,
-          receiverName: s["ชื่อผู้มารับเงิน"] || s.receiverName,
-          receiverPhone: s["เบอร์ติดต่อผู้รับ"] || s.receiverPhone,
-          status: s["สถานะการรับ"] || s.status,
-          receivedAt: s["วันเวลาที่รับ"] || s.receivedAt,
-          photoUrl: s["ลิงก์รูปถ่ายผู้รับ"] || s.photoUrl
-        }));
+        state.slips = json.slips.map(s => {
+          const mId = s["รหัสพระ"] || s.monkId;
+          const mName = s["ชื่อพระ / ฉายา"] || s.monkName;
+          const mObj = (state.monks || []).find(m => m.id === mId || m.name === mName);
+          return {
+            txId: s["รหัสบันทึก"] || s.txId,
+            monkId: mId,
+            temple: s["ชื่อวัด"] || s.temple,
+            branch: s["สาขา"] || s.branch || (mObj ? mObj.branch : "-"),
+            monkName: mName,
+            vassa: s["พรรษา"] || s.vassa,
+            amount: s["จำนวนปัจจัย (บาท)"] || s.amount,
+            receiverName: s["ชื่อผู้มารับเงิน"] || s.receiverName,
+            receiverPhone: s["เบอร์ติดต่อผู้รับ"] || s.receiverPhone,
+            status: s["สถานะการรับ"] || s.status,
+            receivedAt: s["วันเวลาที่รับ"] || s.receivedAt,
+            photoUrl: s["ลิงก์รูปถ่ายผู้รับ"] || s.photoUrl || ""
+          };
+        });
         saveLocal("TEMPLE_SLIPS_DATA", state.slips);
+
+        (state.monks || []).forEach(m => {
+          const matchedSlip = state.slips.find(s =>
+            (s.monkId && m.id && s.monkId === m.id) ||
+            (s.monkName === m.name && s.temple === m.temple)
+          );
+          if (matchedSlip) {
+            m.slipStatus = "รับแล้ว";
+            if (matchedSlip.amount > 0) m.amount = matchedSlip.amount;
+          }
+        });
+        saveLocal("TEMPLE_MONKS_DATA", state.monks);
       }
 
       updateAllKpis();

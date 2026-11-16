@@ -784,6 +784,52 @@ function receiveSlip(ss, data) {
     }
   }
 
+  // ตรวจสอบว่าพระรูปนี้เคยรับใบปวารณาไปแล้วหรือไม่ (1 รูป รับได้ 1 ครั้ง; หากมีแล้วให้ Update แถวเดิม)
+  const slipValues = sheet.getDataRange().getValues();
+  const matchingSlipRows = [];
+  const targetMonkId = String(data.monkId || "").trim().toLowerCase();
+  const targetMonkName = String(data.monkName || "").trim().toLowerCase();
+  const targetTemple = String(data.temple || "").trim().toLowerCase();
+
+  for (let i = 1; i < slipValues.length; i++) {
+    const rMonkId = String(slipValues[i][1] || "").trim().toLowerCase();
+    const rTemple = String(slipValues[i][2] || "").trim().toLowerCase();
+    const rMonkName = String(slipValues[i][3] || "").trim().toLowerCase();
+    if ((targetMonkId && rMonkId === targetMonkId) || (targetMonkName && rMonkName === targetMonkName && rTemple === targetTemple)) {
+      matchingSlipRows.push(i + 1);
+    }
+  }
+
+  if (matchingSlipRows.length > 0) {
+    const primaryRow = matchingSlipRows[0];
+    const existingTxId = slipValues[primaryRow - 1][0] || txId;
+    const existingPhotoUrl = slipValues[primaryRow - 1][10] || "";
+    const finalPhotoUrl = photoUrl || existingPhotoUrl;
+
+    const updatedRow = [
+      existingTxId,
+      data.monkId || "",
+      data.temple || "",
+      data.monkName || "",
+      data.vassa || 0,
+      data.amount || 0,
+      data.receiverName || "-",
+      data.receiverPhone || "-",
+      "รับแล้ว",
+      now,
+      finalPhotoUrl
+    ];
+    sheet.getRange(primaryRow, 1, 1, updatedRow.length).setValues([updatedRow]);
+
+    if (matchingSlipRows.length > 1) {
+      for (let d = matchingSlipRows.length - 1; d >= 1; d--) {
+        try { sheet.deleteRow(matchingSlipRows[d]); } catch (delErr) { }
+      }
+    }
+
+    return { status: "success", isUpdate: true, txId: existingTxId, message: "อัปเดตข้อมูลใบปวารณาสำเร็จ", photoUrl: finalPhotoUrl, receivedAt: now };
+  }
+
   const row = [
     txId,
     data.monkId || "",
@@ -791,8 +837,8 @@ function receiveSlip(ss, data) {
     data.monkName || "",
     data.vassa || 0,
     data.amount || 0,
-    data.receiverName || "",
-    data.receiverPhone || "",
+    data.receiverName || "-",
+    data.receiverPhone || "-",
     "รับแล้ว",
     now,
     photoUrl
@@ -800,18 +846,7 @@ function receiveSlip(ss, data) {
 
   sheet.appendRow(row);
 
-  // อัปเดตสถานะใน sheet พระสงฆ์ที่นิมนต์ให้เป็น "รับแล้ว" ด้วย
-  if (monkSheet && data.monkId) {
-    const values = monkSheet.getDataRange().getValues();
-    for (let i = 1; i < values.length; i++) {
-      if (values[i][0] == data.monkId) {
-        // สามารถเพิ่มคอลัมน์สถานะรับใบปวารณาได้
-        break;
-      }
-    }
-  }
-
-  return { status: "success", txId: txId, message: "บันทึกการรับใบปวารณาสำเร็จ", photoUrl: photoUrl, receivedAt: now };
+  return { status: "success", isUpdate: false, txId: txId, message: "บันทึกการรับใบปวารณาสำเร็จ", photoUrl: photoUrl, receivedAt: now };
 }
 
 /**

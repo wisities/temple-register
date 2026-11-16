@@ -2395,20 +2395,41 @@ function selectMonkForSlip(monk) {
   state.currentSlipMonk = monk;
   renderSlipMonksTable();
 
+  const existingSlip = state.slips.find(s =>
+    (s.monkId && monk.id && s.monkId === monk.id) ||
+    (s.monkName === monk.name && s.temple === monk.temple)
+  );
+  const alreadyReceived = !!existingSlip || monk.slipStatus === "รับแล้ว";
+
   document.getElementById("slipRecTemple").value = monk.temple;
   document.getElementById("slipRecMonkName").value = monk.name;
-  document.getElementById("slipRecAmount").value = (monk.amount && monk.amount > 0) ? monk.amount : "";
+  document.getElementById("slipRecAmount").value = (existingSlip && existingSlip.amount > 0)
+    ? existingSlip.amount
+    : ((monk.amount && monk.amount > 0) ? monk.amount : "");
 
-  // ล้างค่าชื่อผู้รับ เพื่อให้กรอกตามจริง (ไม่ใส่ชื่อจำลอง)
-  const recNameInput = document.getElementById("slipRecReceiverName");
-  const recPhoneInput = document.getElementById("slipRecReceiverPhone");
-  if (recNameInput) recNameInput.value = "";
-  if (recPhoneInput) recPhoneInput.value = "";
+  // แสดงรูปเดิมถ้ามี (กรณีอัปเดต)
+  const recPhoto = existingSlip ? normalizeDriveImageUrl(existingSlip.photoUrl || "") : "";
+  setPhotoPreview("receiverPhotoPreview", "slipPhotoEmpty", recPhoto);
+  const camBadge = document.getElementById("cameraBadge");
+  if (camBadge) camBadge.textContent = recPhoto ? "รูปที่บันทึกไว้" : "ยังไม่มีรูปภาพ";
 
-  document.getElementById("slipSelectedBadge").textContent = monk.slipStatus === "รับแล้ว" ? "รับแล้ว (เบิกซ้ำได้)" : "พร้อมทำรายการรับ";
-  document.getElementById("slipSelectedBadge").className = monk.slipStatus === "รับแล้ว" ? "status-badge registered" : "status-badge available";
+  const badgeEl = document.getElementById("slipSelectedBadge");
+  if (badgeEl) {
+    badgeEl.textContent = alreadyReceived ? "✓ รับแล้ว (โหมดอัปเดตข้อมูล)" : "พร้อมทำรายการรับ";
+    badgeEl.className = alreadyReceived ? "status-badge registered" : "status-badge available";
+  }
 
-  showToast(`เลือกพระเถระผู้มีสิทธิ์: ${monk.name}`, "success");
+  const btnConfirm = document.getElementById("btnConfirmSlipReceive");
+  if (btnConfirm) {
+    btnConfirm.textContent = alreadyReceived ? "💾 บันทึกอัปเดตข้อมูลใบปวารณา" : "✓ ยืนยันการรับใบปวารณา";
+  }
+
+  showToast(
+    alreadyReceived
+      ? `พบประวัติรับใบปวารณาแล้ว: ${monk.name} (โหมดอัปเดตข้อมูล)`
+      : `เลือกพระเถระผู้มีสิทธิ์: ${monk.name}`,
+    alreadyReceived ? "info" : "success"
+  );
 }
 
 function clearSlipSearch() {
@@ -2496,10 +2517,20 @@ function confirmSlipReceive() {
   }
 
   const amount = parseInt(document.getElementById("slipRecAmount").value) || 0;
-
   const now = new Date().toLocaleString("th-TH");
+
+  // ตรวจสอบว่ารับใบปวารณาไปแล้วหรือยัง (1 รูป รับได้ 1 ครั้ง; หากมีเปลี่ยนแปลงให้เป็นการอัปเดต)
+  const existingSlipIndex = state.slips.findIndex(s =>
+    (s.monkId && state.currentSlipMonk.id && s.monkId === state.currentSlipMonk.id) ||
+    (s.monkName === state.currentSlipMonk.name && s.temple === state.currentSlipMonk.temple)
+  );
+  const isUpdate = existingSlipIndex !== -1 || state.currentSlipMonk.slipStatus === "รับแล้ว";
+  const txId = (existingSlipIndex !== -1 && state.slips[existingSlipIndex].txId)
+    ? state.slips[existingSlipIndex].txId
+    : ("TX" + Date.now().toString().slice(-6));
+
   const slipRecord = {
-    txId: "TX" + Date.now().toString().slice(-6),
+    txId: txId,
     monkId: state.currentSlipMonk.id,
     monkName: state.currentSlipMonk.name,
     temple: state.currentSlipMonk.temple,
@@ -2510,24 +2541,39 @@ function confirmSlipReceive() {
     receiverPhone: "-",
     status: "รับแล้ว",
     receivedAt: now,
-    photoUrl: state.receiverPhotoBase64 ? "มีรูปถ่ายผู้รับ (Base64/Drive)" : "assets/receiver_avatar.jpg"
+    photoUrl: state.receiverPhotoBase64
+      ? state.receiverPhotoBase64
+      : ((existingSlipIndex !== -1 && state.slips[existingSlipIndex].photoUrl) ? state.slips[existingSlipIndex].photoUrl : "")
   };
 
   // Update monk status
   state.currentSlipMonk.slipStatus = "รับแล้ว";
+  state.currentSlipMonk.amount = amount;
   saveLocal("TEMPLE_MONKS_DATA", state.monks);
 
-  // Add to slips list
-  state.slips.unshift(slipRecord);
+  if (existingSlipIndex !== -1) {
+    state.slips[existingSlipIndex] = slipRecord;
+    // กรองรายการซ้ำเดิมของพระรูปนี้ให้เหลือเพียง 1 รายการ
+    state.slips = state.slips.filter((s, idx) =>
+      idx === existingSlipIndex || (s.monkId !== state.currentSlipMonk.id && s.monkName !== state.currentSlipMonk.name)
+    );
+  } else {
+    state.slips.unshift(slipRecord);
+  }
   saveLocal("TEMPLE_SLIPS_DATA", state.slips);
 
   updateAllKpis();
   renderSlipMonksTable();
   renderReportTable();
 
-  showToast(`ยืนยันการรับใบปวารณา จำนวน ${amount.toLocaleString()} บาท เรียบร้อย!`, "success");
+  showToast(
+    isUpdate
+      ? `✓ อัปเดตข้อมูลใบปวารณา จำนวน ${amount.toLocaleString()} บาท เรียบร้อย (ไม่สร้างรายการซ้ำ)`
+      : `ยืนยันการรับใบปวารณา จำนวน ${amount.toLocaleString()} บาท เรียบร้อย!`,
+    "success"
+  );
   showResultPopup(
-    "บันทึกรับใบปวารณาสำเร็จ!",
+    isUpdate ? "อัปเดตข้อมูลใบปวารณาสำเร็จ!" : "บันทึกรับใบปวารณาสำเร็จ!",
     state.currentSlipMonk.name,
     [
       `<strong>วัด:</strong> ${state.currentSlipMonk.temple || "-"}`,
@@ -2541,6 +2587,8 @@ function confirmSlipReceive() {
   if (state.gasUrl) {
     callGasApi({
       action: "receive_slip",
+      txId: txId,
+      isUpdate: isUpdate,
       monkId: state.currentSlipMonk.id,
       monkName: state.currentSlipMonk.name,
       temple: state.currentSlipMonk.temple,
@@ -2552,7 +2600,7 @@ function confirmSlipReceive() {
       photoBase64: state.receiverPhotoBase64
     }).then(res => {
       if (res && res.status === "success") {
-        showToast("บันทึกข้อมูลใบปวารณาลง Google Sheet เรียบร้อย", "success");
+        showToast(isUpdate ? "อัปเดตข้อมูลใบปวารณาใน Google Sheet เรียบร้อย" : "บันทึกข้อมูลใบปวารณาลง Google Sheet เรียบร้อย", "success");
       }
     });
   }
@@ -2562,11 +2610,17 @@ function confirmSlipReceive() {
 
 function resetSlipWorkflow() {
   state.currentSlipMonk = null;
+  state.receiverPhotoBase64 = "";
   document.getElementById("slipRecTemple").value = "";
   document.getElementById("slipRecMonkName").value = "";
   document.getElementById("slipRecAmount").value = "";
   document.getElementById("slipSelectedBadge").textContent = "รอเลือกพระเถระ";
   document.getElementById("slipSelectedBadge").className = "status-badge available";
+  const btnConfirm = document.getElementById("btnConfirmSlipReceive");
+  if (btnConfirm) btnConfirm.textContent = "✓ ยืนยันการรับใบปวารณา";
+  setPhotoPreview("receiverPhotoPreview", "slipPhotoEmpty", "");
+  const camBadge = document.getElementById("cameraBadge");
+  if (camBadge) camBadge.textContent = "ยังไม่มีรูปภาพ";
   renderSlipMonksTable();
 }
 

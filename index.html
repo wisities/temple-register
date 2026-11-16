@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ระบบลงทะเบียนเข้างาน - ศรัทธาเชื่อมใจ เทคโนโลยีเชื่อมงานบุญ</title>
+  <title>ระบบลงทะเบียนเข้างาน — วัดป่าอัมพวัน สาขาวัดหนองป่าพงที่ 42</title>
   <!-- Google Fonts: Prompt & Sarabun -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -20,43 +20,22 @@
   <header class="site-header">
     <div class="header-container">
       <div class="header-brand">
-        <!-- Golden Lotus SVG -->
-        <svg class="logo-lotus" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <linearGradient id="lotusGold" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stop-color="#fbbf24" />
-              <stop offset="50%" stop-color="#d97706" />
-              <stop offset="100%" stop-color="#92400e" />
-            </linearGradient>
-            <linearGradient id="lotusGlow" x1="50%" y1="0%" x2="50%" y2="100%">
-              <stop offset="0%" stop-color="#fef08a" />
-              <stop offset="100%" stop-color="#f59e0b" />
-            </linearGradient>
-          </defs>
-          <!-- Center Petal -->
-          <path d="M50 10 C46 30 38 52 50 82 C62 52 54 30 50 10 Z" fill="url(#lotusGlow)" stroke="#b45309"
-            stroke-width="1.5" />
-          <!-- Inner Left Petal -->
-          <path d="M50 82 C30 75 22 45 36 28 C42 45 46 65 50 82 Z" fill="url(#lotusGold)" opacity="0.95" />
-          <!-- Inner Right Petal -->
-          <path d="M50 82 C70 75 78 45 64 28 C58 45 54 65 50 82 Z" fill="url(#lotusGold)" opacity="0.95" />
-          <!-- Outer Left Petal -->
-          <path d="M50 82 C16 78 10 54 22 42 C26 58 38 72 50 82 Z" fill="url(#lotusGold)" opacity="0.85" />
-          <!-- Outer Right Petal -->
-          <path d="M50 82 C84 78 90 54 78 42 C74 58 62 72 50 82 Z" fill="url(#lotusGold)" opacity="0.85" />
-          <!-- Lotus Base -->
-          <path d="M26 84 C40 92 60 92 74 84 C62 88 38 88 26 84 Z" fill="#d97706" />
-        </svg>
+        <!-- Wat Pah Ampawan Logo -->
+        <img src="assets/logo.png?v=final" alt="โลโก้วัดป่าอัมพวัน สาขาวัดหนองป่าพงที่ 42" class="logo-lotus">
 
         <div class="brand-titles">
           <h1>ระบบลงทะเบียนเข้างาน</h1>
-          <div class="brand-slogan">“ศรัทธาเชื่อมใจ เทคโนโลยีเชื่อมงานบุญ”</div>
-          <div class="brand-desc">สะดวก รวดเร็ว แม่นยำ ครบถ้วน • ร่วมสานงานบุญ ด้วยเทคโนโลยี เพื่อพระพุทธศาสนา</div>
+          <div class="brand-slogan">วัดป่าอัมพวัน สาขาวัดหนองป่าพงที่ 42</div>
+          <div class="brand-desc">“ศรัทธาเชื่อมใจ เทคโนโลยีเชื่อมงานบุญ” • สะดวก รวดเร็ว แม่นยำ ครบถ้วน</div>
         </div>
       </div>
 
       <div class="header-right">
-        <div class="motto-badge">วัดไทย วัดใจ วัดอนาคต</div>
+        <div class="motto-badge">วัดป่าอัมพวัน สาขาที่ 42</div>
+        <div id="smartCardStatusPill" class="smartcard-status-pill" title="คลิกเพื่อตรวจสอบการเชื่อมต่อเครื่องอ่านบัตรประชาชน">
+          <span class="status-dot" id="cardStatusDot"></span>
+          <span id="cardStatusPillText">เครื่องอ่านบัตร: ตรวจสอบสถานะ</span>
+        </div>
         <div id="gsheetStatusPill" class="gsheet-status-pill" title="คลิกเพื่อตั้งค่าการเชื่อมต่อ Google Sheets">
           <span class="status-dot"></span>
           <span id="gsheetStatusText">โหมดออฟไลน์ / Local Data</span>
@@ -104,7 +83,7 @@
           <div class="banner-badge-num">1</div>
           <div class="banner-title">
             <h2>ลงทะเบียนพระสงฆ์</h2>
-            <p>สแกนบัตรประชาชน เพื่อตรวจสอบรายชื่อที่เชิญ/นิมนต์ อัตโนมัติ</p>
+            <p>ค้นหาจากชื่อพระ หรือเสียบบัตรประชาชนเพื่อดึงชื่อตัวภาษาไทยมาค้นหาอัตโนมัติ</p>
           </div>
         </div>
         <div class="banner-right">
@@ -125,9 +104,9 @@
           </div>
           <div class="flow-card-body">
 
-            <!-- 1.1 เครื่องอ่านบัตรประชาชน -->
+            <!-- 1.1 เครื่องอ่านบัตรประชาชน & ค้นหาจากชื่อพระ -->
             <div
-              style="background: #fff7ed; border: 1px solid #fed7aa; padding: 0.85rem; border-radius: 8px; margin-bottom: 1rem;">
+              style="background: #fdf8f0; border: 1px solid #d6bfa9; padding: 0.85rem; border-radius: 8px; margin-bottom: 1rem;">
               <div style="display: flex; gap: 1rem; align-items: center;">
                 <div
                   style="width: 68px; height: 68px; border-radius: 8px; overflow: hidden; flex-shrink: 0; border: 1px solid #cbd5e1; background: #fff;">
@@ -135,19 +114,25 @@
                     style="width: 100%; height: 100%; object-fit: contain;">
                 </div>
                 <div style="flex: 1;">
-                  <div style="font-weight: 600; color: #9a3412; font-size: 0.92rem; margin-bottom: 0.2rem;">
-                    1.1 เครื่องอ่านบัตรประชาชน (Smart Card Reader)
+                  <div style="font-weight: 600; color: #4e2e18; font-size: 0.92rem; margin-bottom: 0.2rem;">
+                    1.1 ค้นหาจากชื่อพระ / อ่านชื่อจากบัตรประชาชน (Smart Card)
                   </div>
                   <div style="font-size: 0.78rem; color: #64748b; margin-bottom: 0.45rem;">
-                    เสียบบัตรประชาชนที่เครื่องอ่าน หรือกรอกเลขประจำตัวประชาชน 13 หลัก
+                    พิมพ์คำค้นในชื่อพระ (เช่น เลี่ยม, บุญชู) หรือเสียบบัตรประชาชนเพื่อดึงชื่อตัวมาค้นหาอัตโนมัติ
                   </div>
                   <div style="display: flex; gap: 0.5rem;">
                     <input type="text" id="monkIdCardInput" class="input-control"
-                      placeholder="เลขบัตรประชาชน 13 หลัก (จากการเสียบบัตร)" maxlength="20"
+                      placeholder="พิมพ์คำค้นในชื่อพระ หรือเสียบบัตรประชาชน..." maxlength="60"
                       style="font-weight: 600; font-size: 0.95rem;">
                     <button type="button" id="btnMonkScan" class="btn btn-monk" style="white-space: nowrap;">
-                      🔍 ตรวจสอบบัตร
+                      🔍 ค้นหาชื่อพระ
                     </button>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem; font-size: 0.76rem;">
+                    <button type="button" class="btn btn-secondary btn-sm btn-check-card-reader" style="font-size: 0.75rem; padding: 0.2rem 0.55rem;">
+                      💳 ตรวจสอบเครื่องอ่าน & ฟิลด์ข้อมูลบัตร
+                    </button>
+                    <span id="cardReaderTextMonk" style="color: #64748b;">⚪ โหมดค้นหาจากชื่อ / รอเสียบบัตร</span>
                   </div>
                 </div>
               </div>
@@ -156,13 +141,13 @@
 
             <!-- 1.2 ค้นหาข้อมูลพระสงฆ์ (เหมือน 3.1) -->
             <div
-              style="background: #fafaf9; border: 1px solid #e7e5e4; padding: 0.85rem; border-radius: 8px; margin-bottom: 0.75rem;">
-              <div style="font-weight: 600; color: #78350f; font-size: 0.88rem; margin-bottom: 0.5rem;">
-                1.2 ค้นหาข้อมูลพระสงฆ์ (ฐานข้อมูล 422 รูป)
+              style="background: #faf7f2; border: 1px solid #d6bfa9; padding: 0.85rem; border-radius: 8px; margin-bottom: 0.75rem;">
+              <div style="font-weight: 600; color: #4e2e18; font-size: 0.88rem; margin-bottom: 0.5rem;">
+                1.2 คำค้นในชื่อพระ & ตัวกรองรายชื่อ (ฐานข้อมูล 422 รูป)
               </div>
               <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-bottom: 0.5rem;">
                 <div>
-                  <label style="font-size: 0.75rem; color: #475569; font-weight: 500;">ชื่อพระ / ฉายา:</label>
+                  <label style="font-size: 0.75rem; color: #475569; font-weight: 500;">คำค้นในชื่อพระ:</label>
                   <input type="text" id="monkFilterName" class="input-control" placeholder="เช่น เลี่ยม, บุญชู">
                 </div>
                 <div>
@@ -183,11 +168,17 @@
             </div>
 
             <!-- ตารางรายนามพระสงฆ์ที่ฟิลเตอร์ได้ (เหมือน 3.2) -->
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
-              <span style="font-weight: 600; color: #78350f; font-size: 0.85rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem; flex-wrap: wrap; gap: 0.4rem;">
+              <span style="font-weight: 600; color: #4e2e18; font-size: 0.85rem;">
                 เลือกรายนามพระสงฆ์ (คลิกแถวเพื่อเลือก):
               </span>
-              <span style="font-size: 0.75rem; color: #64748b;" id="monkFilterCount">แสดง 422 รูป</span>
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <span style="font-size: 0.75rem; color: #64748b;" id="monkFilterCount">แสดง 422 รูป</span>
+                <button type="button" id="btnOpenWalkinForm" class="btn btn-monk btn-sm" onclick="openWalkinFromCard()"
+                  style="font-size: 0.78rem; padding: 0.25rem 0.65rem;">
+                  ➕ เพิ่มพระนอกรายชื่อ
+                </button>
+              </div>
             </div>
             <div class="table-responsive"
               style="max-height: 250px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px;">
@@ -260,15 +251,17 @@
                     style="background: #fffbeb; padding: 0.6rem 0.85rem; border-radius: 6px; border: 1px solid #fde68a;">
                     <div
                       style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
-                      <span class="info-label" style="font-weight: 600; color: #92400e;">เลขประจำตัวประชาชน (13
-                        หลัก):</span>
+                      <span class="info-label" style="font-weight: 600; color: #92400e;">เลขประจำตัวประชาชน (บันทึก/เพิ่มลงฐานข้อมูลพระสงฆ์):</span>
                       <span id="infoCardSourceBadge"
                         style="font-size: 0.75rem; padding: 0.15rem 0.5rem; border-radius: 999px; background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; display: none;">💳
-                        ดึงจากบัตรที่เสียบคาไว้</span>
+                        บันทึกในฐานข้อมูลแล้ว</span>
                     </div>
                     <input type="text" id="infoMonkIdCard" class="input-control"
-                      placeholder="ยังไม่มีเลขบัตร (จะบันทึกจากบัตรที่เสียบ)" maxlength="20"
+                      placeholder="กรอกเลขบัตร 13 หลัก เพื่อเพิ่มลงฐานข้อมูลพระสงฆ์" maxlength="20"
                       style="font-weight: 700; color: #92400e; font-size: 1rem; background: #fff;">
+                    <div style="font-size: 0.74rem; color: #78350f; margin-top: 0.25rem;">
+                      * คลิกเลือกพระจากลิสต์ด้านซ้ายแล้ว สามารถกรอกเลขบัตรประชาชน 13 หลักที่นี่เพื่อเพิ่มลงฐานข้อมูลได้ทันที
+                    </div>
                   </div>
 
                   <div class="info-item">
@@ -296,7 +289,7 @@
                     <span id="infoMonkStatus" class="status-badge available">• ลงทะเบียนได้</span>
                   </div>
                   <div class="info-item full-width">
-                    <span class="info-label">ข้อมูลที่พัก / โรงแรม:</span>
+                    <span class="info-label">ข้อมูลที่พัก/ของที่ระลึก:</span>
                     <input type="text" id="infoMonkHotel" class="input-control" placeholder="">
                   </div>
                   <div class="info-item full-width">
@@ -323,7 +316,7 @@
               </div>
               <div class="monk-profile-wrapper">
                 <div class="profile-avatar-wrap">
-                  <img src="assets/monk_avatar.jpg" alt="รูปพระสงฆ์">
+                  <img id="walkinMonkPhoto" src="assets/monk_avatar.jpg" alt="รูปพระสงฆ์">
                 </div>
                 <div class="profile-info-grid">
                   <div class="info-item full-width">
@@ -419,17 +412,23 @@
 
               <div class="id-input-group">
                 <label>อ่านข้อมูลจากบัตรประชาชนญาติโยม (Smart Card):</label>
-                <div style="display: flex; gap: 0.5rem; width: 100%;">
-                  <button type="button" id="btnSimulateLayScan" class="btn btn-lay" style="width: 100%;">
-                    💳 อ่านข้อมูลจากบัตรประชาชน
+                <div style="display: flex; flex-direction: column; gap: 0.5rem; width: 100%;">
+                  <button type="button" id="btnSimulateLayScan" class="btn btn-lay" style="width: 100%; font-size: 0.95rem; font-weight: 600;">
+                    💳 อ่านข้อมูลจากเครื่องอ่านบัตรประชาชน
                   </button>
+                  <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.78rem;">
+                    <button type="button" class="btn btn-secondary btn-sm btn-check-card-reader" style="font-size: 0.75rem; padding: 0.2rem 0.55rem;">
+                      🔍 ตรวจสอบการเชื่อมต่อ
+                    </button>
+                    <span id="cardReaderTextLay" style="color: #64748b;">⚪ โหมดป้อนข้อมูล / รอเสียบบัตร</span>
+                  </div>
                 </div>
               </div>
 
               <div class="id-input-group">
-                <label for="layIdCardManual">ค้นหาด้วยรหัสญาติโยม หรือเลขบัตรประชาชน:</label>
+                <label for="layIdCardManual">ค้นหาด้วยเลขบัตรประชาชน หรือเบอร์โทรศัพท์:</label>
                 <input type="text" id="layIdCardManual" class="input-control"
-                  placeholder="พิมพ์รหัส LP... หรือเลขบัตร 13 หลัก" maxlength="20">
+                  placeholder="พิมพ์เลขบัตร 13 หลัก หรือเบอร์โทรศัพท์" maxlength="20">
               </div>
             </div>
           </div>
@@ -448,33 +447,24 @@
               ข้อมูลส่วนบุคคลและรหัสญาติโยม (ข้อ 2.2)
             </div>
 
-            <div class="profile-info-grid" style="margin-bottom: 1.5rem;">
+            <div class="monk-profile-wrapper" style="margin-bottom: 1.5rem;">
+              <div style="display: flex; flex-direction: column; align-items: center; gap: 0.45rem; flex-shrink: 0;">
+                <div class="profile-avatar-wrap" style="width: 140px; height: 175px; border-radius: 10px; overflow: hidden; border: 2px solid #bae6fd; background: #f8fafc; display: flex; align-items: center; justify-content: center;">
+                  <img id="layCardPhotoPreview" src="assets/receiver_avatar.jpg" alt="รูปถ่ายจากบัตรประชาชน" style="width: 100%; height: 100%; object-fit: cover;">
+                </div>
+                <span id="layCardPhotoBadge" class="status-badge available" style="font-size: 0.72rem; text-align: center;">รูปตัวอย่าง / รออ่านบัตร</span>
+              </div>
+
+              <div class="profile-info-grid" style="flex: 1; margin-bottom: 0;">
               <div class="info-item">
-                <div
-                  style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
-                  <label class="info-label" style="font-weight: 700; color: #0369a1;">รหัสญาติโยม (Primary Key):</label>
-                  <span id="layIdBadge"
-                    style="display: none; font-size: 0.72rem; padding: 0.1rem 0.4rem; border-radius: 999px;"></span>
-                </div>
-                <div style="display: flex; gap: 0.5rem;">
-                  <input type="text" id="layId" class="input-control" placeholder="เช่น LP0001 (อัตโนมัติ)"
-                    style="font-weight: 700; color: #0369a1; background: #f0f9ff;">
-                  <button type="button" class="btn btn-secondary btn-sm" onclick="generateNextLayId(true)"
-                    title="สร้างรหัสถัดไป">
-                    🔄 รหัสใหม่
-                  </button>
-                </div>
+                <label class="info-label" style="font-weight: 700; color: #0369a1;">เลขประจำตัวประชาชน (Primary Key):</label>
+                <input type="text" id="layIdCard" class="input-control" placeholder="เลขบัตร 13 หลัก (หากไม่มีให้กรอกเบอร์โทร)"
+                  maxlength="20">
               </div>
 
               <div class="info-item">
                 <label class="info-label">ชื่อ - นามสกุล:</label>
                 <input type="text" id="layName" class="input-control" placeholder="ระบุชื่อ - นามสกุล">
-              </div>
-
-              <div class="info-item">
-                <label class="info-label">เลขประจำตัวประชาชน (ไม่บังคับ - เว้นว่างได้):</label>
-                <input type="text" id="layIdCard" class="input-control" placeholder="เว้นว่างได้ หรือระบุ 13 หลัก"
-                  maxlength="20">
               </div>
 
               <div class="info-item">
@@ -492,6 +482,7 @@
                 <label class="info-label">ที่อยู่ตามทะเบียนบ้าน:</label>
                 <input type="text" id="layAddress" class="input-control" placeholder="ระบุที่อยู่ตามทะเบียนบ้าน">
               </div>
+              </div>
             </div>
 
             <div
@@ -501,12 +492,12 @@
 
             <div class="profile-info-grid">
               <div class="info-item">
-                <label class="info-label">เบอร์โทรศัพท์มือถือ:</label>
+                <label class="info-label">เบอร์โทรศัพท์มือถือ (ใช้เป็น Primary Key หากไม่มีเลขบัตร):</label>
                 <input type="text" id="layPhone" class="input-control" placeholder="08x-xxx-xxxx">
               </div>
               <div class="info-item">
-                <label class="info-label">เบอร์ติดต่อกรณีฉุกเฉิน:</label>
-                <input type="text" id="layEmergencyPhone" class="input-control" placeholder="08x-xxx-xxxx">
+                <label class="info-label">เบอร์ติดต่อกรณีฉุกเฉิน (ไม่บังคับ):</label>
+                <input type="text" id="layEmergencyPhone" class="input-control" placeholder="08x-xxx-xxxx (ไม่บังคับ)">
               </div>
             </div>
 
@@ -591,6 +582,7 @@
                     <th style="width: 50px;">ลำดับ</th>
                     <th>ชื่อ / ฉายา</th>
                     <th>วัด</th>
+                    <th>สาขา</th>
                     <th style="width: 60px;">พรรษา</th>
                     <th style="width: 95px;">สิทธิ์ปวารณา</th>
                     <th style="width: 90px;">สถานะ</th>
@@ -641,14 +633,6 @@
                     <input type="number" id="slipRecAmount" class="input-control" value=""
                       placeholder="ระบุจำนวนปัจจัย (ถ้ามี)"
                       style="font-size: 1.1rem; font-weight: 700; color: #166534;">
-                  </div>
-                  <div class="info-item">
-                    <label class="info-label">ชื่อ - นามสกุล ผู้มารับเงินแทน / ผู้รับมอบฉันทะ:</label>
-                    <input type="text" id="slipRecReceiverName" class="input-control" placeholder="เช่น นายสมชาย ใจดี">
-                  </div>
-                  <div class="info-item">
-                    <label class="info-label">เบอร์โทรศัพท์ผู้รับ:</label>
-                    <input type="text" id="slipRecReceiverPhone" class="input-control" placeholder="08x-xxx-xxxx">
                   </div>
                 </div>
               </div>
@@ -870,6 +854,155 @@
     <div class="footer-quote">“วัดคือศูนย์รวมจิตใจ เทคโนโลยีคือสะพานแห่งศรัทธา”</div>
     <div>ทำงานด้วยใจ เพื่อพระพุทธศาสนา • ระบบลงทะเบียนเข้างาน วัดหนองป่าพง</div>
   </footer>
+
+  <!-- Card Reader Connection Modal -->
+  <div id="cardReaderModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <span style="font-size: 1.25rem;">💳</span>
+          <h3 style="margin: 0; font-size: 1.1rem; color: #1e293b;">ตรวจสอบการเชื่อมต่อเครื่องอ่านบัตรประชาชน</h3>
+        </div>
+        <button type="button" class="modal-close" onclick="closeCardReaderModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="reader-status-cards">
+          <div class="reader-status-item" id="diagAgentStatus">
+            <div class="diag-icon">🌐</div>
+            <div class="diag-info">
+              <div class="diag-title">บริการอ่านบัตร (Smart Card Agent)</div>
+              <div class="diag-desc" id="diagAgentText">กำลังตรวจสอบการเชื่อมต่อ (พอร์ต 8084)...</div>
+            </div>
+            <span class="status-badge" id="diagAgentBadge">ตรวจสอบ...</span>
+          </div>
+          <div class="reader-status-item" id="diagHardwareStatus">
+            <div class="diag-icon">🔌</div>
+            <div class="diag-info">
+              <div class="diag-title">เครื่องอ่านบัตร USB (Hardware)</div>
+              <div class="diag-desc" id="diagHardwareText">รองรับเครื่องอ่านสมาร์ทการ์ดมาตรฐาน PCSC / CCID ทุกยี่ห้อ</div>
+            </div>
+            <span class="status-badge available" id="diagHardwareBadge">พร้อมใช้งาน</span>
+          </div>
+          <div class="reader-status-item" id="diagCardSlotStatus">
+            <div class="diag-icon">🪪</div>
+            <div class="diag-info">
+              <div class="diag-title">ช่องเสียบบัตรประชาชน (Card Slot)</div>
+              <div class="diag-desc" id="diagCardSlotText">เสียบบัตรประชาชนที่เครื่องอ่านเพื่ออ่านข้อมูลอัตโนมัติ</div>
+            </div>
+            <span class="status-badge available" id="diagCardSlotBadge">รอเสียบบัตร</span>
+          </div>
+        </div>
+
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.85rem; margin-top: 1rem; font-size: 0.85rem; color: #475569;">
+          <div style="font-weight: 600; color: #0f172a; margin-bottom: 0.35rem;">💡 คำแนะนำการใช้งานเครื่องอ่านบัตร:</div>
+          <ul style="margin: 0; padding-left: 1.2rem; line-height: 1.5;">
+            <li>เสียบสาย USB เครื่องอ่านบัตร (เช่น ACR38, ACR39, Zoweetek ฯลฯ) เข้ากับคอมพิวเตอร์</li>
+            <li>หากใช้งานร่วมกับโปรแกรม Agent (เช่น ThaiNationalIDCard, SIAM ID) เปิดโปรแกรมทิ้งไว้ ระบบจะดึงข้อมูลอัตโนมัติทันทีที่เสียบบัตร</li>
+            <li>หากเป็นเครื่องอ่านแบบ Keyboard Wedge หรือสแกนเนอร์ สามารถแตะหรือเสียบเพื่อพิมพ์เลข 13 หลักลงในช่องได้ทันที</li>
+          </ul>
+        </div>
+
+        <div style="margin-top: 1rem; background: #fdf8f0; border: 1px solid #d6bfa9; border-radius: 8px; padding: 0.85rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.5rem;">
+            <div style="font-weight: 600; color: #4e2e18; font-size: 0.88rem;">🪪 ทดสอบอ่านบัตรจริง & ตรวจสอบข้อมูลที่ดึงเข้าสู่ฟิลด์ในระบบ:</div>
+            <button type="button" class="btn btn-monk btn-sm" onclick="testRealCardReadAndInspect()" style="white-space: nowrap;">
+              🔄 อ่านข้อมูลจากบัตรที่เสียบอยู่
+            </button>
+          </div>
+          <div style="display: flex; gap: 0.5rem; margin-bottom: 0.75rem;">
+            <input type="text" id="manualCardTestInput" class="input-control" placeholder="หรือกรอกเลขบัตร 13 หลัก / ชื่อเพื่อทดสอบ" maxlength="40">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="testCardReadAction()" style="white-space: nowrap;">
+              ส่งเข้าหน้าจอ
+            </button>
+          </div>
+          <div class="card-mapping-box" style="margin-top: 0.5rem;">
+            <div style="font-weight: 600; color: #4e2e18; font-size: 0.82rem; margin-bottom: 0.4rem;">
+              📋 ตารางตรวจสอบข้อมูลที่ดึงจากบัตร (Card Data) และฟิลด์ปลายทางในระบบ (Field Mapping)
+            </div>
+            <div style="overflow-x: auto;">
+              <table class="card-mapping-table">
+                <thead>
+                  <tr>
+                    <th>ข้อมูลจากบัตร (Card Data)</th>
+                    <th>ค่าที่อ่านได้จริง</th>
+                    <th>ฟิลด์ในระบบ (System Field)</th>
+                    <th>สถานะ</th>
+                  </tr>
+                </thead>
+                <tbody id="cardMappingBody">
+                  <tr>
+                    <td>เลขบัตรประชาชน (CID)</td>
+                    <td id="mapValCid">-</td>
+                    <td><code>#infoMonkIdCard</code>, <code>#layIdCard</code>, <code>#walkinIdCard</code></td>
+                    <td id="mapStatusCid"><span class="status-badge available">รอข้อมูล</span></td>
+                  </tr>
+                  <tr>
+                    <td>ชื่อตัวภาษาไทย (Given Name)</td>
+                    <td id="mapValGiven">-</td>
+                    <td><code>#monkFilterName</code> (คำค้นในชื่อพระ), <code>#layName</code></td>
+                    <td id="mapStatusGiven"><span class="status-badge available">รอข้อมูล</span></td>
+                  </tr>
+                  <tr>
+                    <td>ชื่อ - นามสกุลเต็ม (Fullname)</td>
+                    <td id="mapValFullname">-</td>
+                    <td><code>#layName</code>, <code>#walkinName</code></td>
+                    <td id="mapStatusFullname"><span class="status-badge available">รอข้อมูล</span></td>
+                  </tr>
+                  <tr>
+                    <td>วันเกิด (DOB)</td>
+                    <td id="mapValDob">-</td>
+                    <td><code>#layBirthday</code> (วว/ดด/พ.ศ.)</td>
+                    <td id="mapStatusDob"><span class="status-badge available">รอข้อมูล</span></td>
+                  </tr>
+                  <tr>
+                    <td>เพศ (Gender)</td>
+                    <td id="mapValGender">-</td>
+                    <td><code>#layGender</code> (ชาย/หญิง)</td>
+                    <td id="mapStatusGender"><span class="status-badge available">รอข้อมูล</span></td>
+                  </tr>
+                  <tr>
+                    <td>ที่อยู่ตามบัตร (Address)</td>
+                    <td id="mapValAddress">-</td>
+                    <td><code>#layAddress</code></td>
+                    <td id="mapStatusAddress"><span class="status-badge available">รอข้อมูล</span></td>
+                  </tr>
+                  <tr>
+                    <td>รูปถ่ายจากบัตร (Photo)</td>
+                    <td id="mapValPhoto">-</td>
+                    <td><code>#layCardPhotoPreview</code></td>
+                    <td id="mapStatusPhoto"><span class="status-badge available">รอข้อมูล</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="runCardReaderDiagnostics()">🔄 ตรวจสอบการเชื่อมต่อใหม่</button>
+        <button type="button" class="btn btn-secondary" onclick="closeCardReaderModal()">ปิดหน้าต่าง</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Large Registration Success Pop-up (สำหรับผู้สูงอายุอ่านง่าย ชัดเจน) -->
+  <div id="registrationSuccessModal" class="modal-backdrop" style="display: none; z-index: 9999;">
+    <div class="modal-dialog result-popup-dialog">
+      <div class="result-popup-header">
+        <div class="result-popup-icon">✓</div>
+        <h2 id="resultPopupTitle">ลงทะเบียนสำเร็จแล้ว!</h2>
+      </div>
+      <div class="result-popup-body">
+        <div id="resultPopupSubtitle" class="result-popup-subtitle">บันทึกข้อมูลเรียบร้อยแล้ว</div>
+        <div id="resultPopupDetails" class="result-popup-details"></div>
+      </div>
+      <div class="result-popup-footer">
+        <button type="button" id="btnCloseResultPopup" class="btn btn-slip result-popup-btn" onclick="closeResultPopup()">
+          ✓ ตกลง / ปิดหน้าต่างนี้
+        </button>
+      </div>
+    </div>
+  </div>
 
   <!-- Toast Container -->
   <div id="toastContainer" class="toast-container"></div>

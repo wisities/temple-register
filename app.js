@@ -1054,13 +1054,15 @@ function setupMonkWorkflow() {
     });
   }
 
-  // Live validation on Walkin Citizen ID input (Primary Key)
+  // Live validation on Walkin Citizen ID input (Primary Key: ตัวเลข 13 หลักเท่านั้น)
   const inputWalkinId = document.getElementById("walkinIdCard");
   if (inputWalkinId) {
     inputWalkinId.addEventListener("input", () => {
-      const val = inputWalkinId.value.trim();
-      const cleanVal = val.replace(/[-\s]/g, "");
-      if (cleanVal.length >= 10 && !cleanVal.includes("x")) {
+      const digitsOnly = inputWalkinId.value.replace(/\D/g, "").slice(0, 13);
+      if (inputWalkinId.value !== digitsOnly) inputWalkinId.value = digitsOnly;
+      const val = digitsOnly;
+      const cleanVal = val;
+      if (cleanVal.length === 13) {
         // เช็คกับพระสงฆ์ที่นิมนต์
         const monkInvited = state.monks.find(m => (m.idCard || "").replace(/[-\s]/g, "") === cleanVal);
         if (monkInvited) {
@@ -1642,9 +1644,9 @@ function saveWalkinMonk() {
   const province = document.getElementById("walkinProvince").value.trim();
   const phone = document.getElementById("walkinPhone").value.trim();
 
-  // 1. ตรวจสอบเลขประจำตัวประชาชน (Primary Key ห้ามเว้นว่าง และห้ามเป็น dummy)
-  if (!cleanId || cleanId.length < 13 || cleanId.includes("x")) {
-    showToast("กรุณาระบุเลขประจำตัวประชาชน 13 หลักให้ถูกต้อง (เลขบัตรเป็น Primary Key ห้ามเว้นว่างหรือซ้ำ)", "warning");
+  // 1. ตรวจสอบเลขประจำตัวประชาชน (Primary Key: ต้องเป็นตัวเลขครบ 13 หลักเท่านั้น)
+  if (!/^\d{13}$/.test(cleanId)) {
+    showToast("⚠️ เลขประจำตัวประชาชนต้องเป็นตัวเลขครบทั้ง 13 หลักเท่านั้น (ห้ามเว้นว่างหรือมีขีด)", "warning");
     const inputCard = document.getElementById("walkinIdCard");
     if (inputCard) inputCard.focus();
     return;
@@ -2079,27 +2081,28 @@ function setupLayWorkflow() {
     });
   }
 
-  // ช่องเลขบัตรประชาชน (Primary Key หลัก)
+  // ช่องเลขบัตรประชาชน (Primary Key หลัก: ตัวเลข 13 หลักเท่านั้น)
   const inputCard = document.getElementById("layIdCard");
   if (inputCard) {
     inputCard.addEventListener("input", (e) => {
-      const val = e.target.value.trim();
-      const cleanVal = val.replace(/[-\s]/g, "");
-      if (cleanVal.length >= 9 && !cleanVal.includes("x")) {
-        checkAndPopulateLayperson(val);
+      const digitsOnly = e.target.value.replace(/\D/g, "").slice(0, 13);
+      if (e.target.value !== digitsOnly) e.target.value = digitsOnly;
+      if (digitsOnly.length === 13 || digitsOnly.length >= 9) {
+        checkAndPopulateLayperson(digitsOnly);
       }
     });
   }
 
-  // ช่องเบอร์โทรศัพท์ (Primary Key สำรองเมื่อไม่มีเลขบัตร)
+  // ช่องเบอร์โทรศัพท์ (Primary Key สำรอง: ตัวเลข 10 หลัก ไม่มี -)
   const inputPhone = document.getElementById("layPhone");
   if (inputPhone) {
     inputPhone.addEventListener("input", (e) => {
-      const cardVal = (document.getElementById("layIdCard")?.value || "").replace(/[-\s]/g, "");
+      const digitsOnly = e.target.value.replace(/\D/g, "").slice(0, 10);
+      if (e.target.value !== digitsOnly) e.target.value = digitsOnly;
+      const cardVal = (document.getElementById("layIdCard")?.value || "").replace(/\D/g, "");
       if (cardVal) return;
-      const cleanPhone = e.target.value.trim().replace(/[-\s]/g, "");
-      if (cleanPhone.length >= 9) {
-        checkAndPopulateLayperson(cleanPhone);
+      if (digitsOnly.length === 10) {
+        checkAndPopulateLayperson(digitsOnly);
       }
     });
   }
@@ -2111,20 +2114,32 @@ function setupLayWorkflow() {
 
 function confirmLayRegistration() {
   const name = document.getElementById("layName").value.trim();
-  const idCard = document.getElementById("layIdCard").value.trim();
-  const cleanId = idCard.replace(/[-\s]/g, "").trim();
+  const idCard = document.getElementById("layIdCard").value.replace(/\D/g, "").trim();
+  const cleanId = idCard;
   const birthday = document.getElementById("layBirthday").value.trim();
   const gender = document.getElementById("layGender").value;
   const address = document.getElementById("layAddress").value.trim();
-  const phoneRaw = document.getElementById("layPhone") ? document.getElementById("layPhone").value.trim() : "";
-  const cleanPhone = phoneRaw.replace(/[-\s]/g, "").trim();
+  const phoneRaw = (document.getElementById("layPhone") ? document.getElementById("layPhone").value : "").replace(/\D/g, "").trim();
+  const cleanPhone = phoneRaw;
   const phone = phoneRaw || "-";
   const emergencyPhone = (document.getElementById("layEmergencyPhone") ? document.getElementById("layEmergencyPhone").value.trim() : "") || "-";
 
-  // 1. ตรวจสอบ Primary Key: เลขบัตรประชาชน -> ถ้าไม่มีใช้เบอร์โทรศัพท์แทน
-  if (!cleanId && !cleanPhone) {
-    showToast("กรุณากรอกเลขประจำตัวประชาชน หรือเบอร์โทรศัพท์อย่างน้อย 1 อย่าง (Primary Key)", "warning");
+  // 1. ตรวจสอบ Primary Key: เลขบัตรประชาชน (ต้องครบ 13 หลัก) -> ถ้าไม่มีใช้เบอร์โทรศัพท์ (ต้องครบ 10 หลัก ไม่มี -)
+  if (cleanId && !/^\d{13}$/.test(cleanId)) {
+    showToast("⚠️ เลขประจำตัวประชาชนต้องเป็นตัวเลขครบทั้ง 13 หลักเท่านั้น", "warning");
     document.getElementById("layIdCard")?.focus();
+    return;
+  }
+
+  if (!cleanId) {
+    if (!/^\d{10}$/.test(cleanPhone)) {
+      showToast("⚠️ กรุณากรอกเลขบัตรประชาชน 13 หลัก หรือเบอร์โทรศัพท์ 10 หลัก (ตัวเลขเท่านั้น ไม่มี -)", "warning");
+      document.getElementById("layPhone")?.focus();
+      return;
+    }
+  } else if (cleanPhone && !/^\d{10}$/.test(cleanPhone)) {
+    showToast("⚠️ เบอร์โทรศัพท์ต้องเป็นตัวเลขครบ 10 หลัก (ไม่ต้องมี -)", "warning");
+    document.getElementById("layPhone")?.focus();
     return;
   }
 
@@ -2135,8 +2150,8 @@ function confirmLayRegistration() {
     return;
   }
 
-  // 3. ตรวจสอบเลขบัตรประชาชน (กรณีระบุ)
-  if (cleanId && cleanId.length >= 10 && !cleanId.includes("x")) {
+  // 3. ตรวจสอบเลขบัตรประชาชนข้ามชีต (พระนิมนต์ / พระนอกรายชื่อ)
+  if (cleanId) {
     const monkMatch = state.monks.find(m => (m.idCard || "").toString().replace(/[-\s]/g, "").trim() === cleanId);
     if (monkMatch) {
       showToast(`⚠️ เลขบัตรประชาชนนี้อยู่ในรายนาม 'พระสงฆ์ที่นิมนต์' แล้ว: ${monkMatch.name}`, "warning");
@@ -2145,6 +2160,26 @@ function confirmLayRegistration() {
     const walkinMatch = state.walkinMonks.find(w => (w.idCard || "").toString().replace(/[-\s]/g, "").trim() === cleanId);
     if (walkinMatch) {
       showToast(`⚠️ เลขบัตรประชาชนนี้อยู่ใน 'พระนอกรายชื่อ' แล้ว: ${walkinMatch.name}`, "warning");
+      return;
+    }
+  }
+
+  // 3.5 ตรวจสอบเบอร์โทรศัพท์ไม่ให้ซ้ำกับคนอื่น
+  if (cleanPhone) {
+    const cleanPhoneNoZero = cleanPhone.replace(/^0+/, "");
+    const dupPhoneOwner = state.laypeople.find(l => {
+      const lPhone = (l.phone || "").toString().replace(/\D/g, "");
+      if (!lPhone) return false;
+      const samePhone = lPhone === cleanPhone || (cleanPhoneNoZero.length >= 8 && lPhone.replace(/^0+/, "") === cleanPhoneNoZero);
+      if (!samePhone) return false;
+      const lCard = (l.idCard || "").toString().replace(/\D/g, "");
+      if (state.editingLayId && l.id === state.editingLayId) return false;
+      if (cleanId && lCard && lCard === cleanId) return false;
+      return true;
+    });
+    if (dupPhoneOwner) {
+      showToast(`⚠️ เบอร์โทรศัพท์ ${cleanPhone} ซ้ำกับข้อมูลของ "${dupPhoneOwner.name}" ในระบบแล้ว กรุณาใช้เบอร์อื่น`, "warning");
+      document.getElementById("layPhone")?.focus();
       return;
     }
   }

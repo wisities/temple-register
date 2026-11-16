@@ -352,8 +352,8 @@
                       <span id="walkinIdStatusBadge"
                         style="display: none; font-size: 0.72rem; padding: 0.1rem 0.4rem; border-radius: 999px;"></span>
                     </div>
-                    <input type="text" id="walkinIdCard" class="input-control" placeholder="เลขประจำตัวประชาชน 13 หลัก"
-                      maxlength="20" style="font-weight: 600;">
+                    <input type="text" id="walkinIdCard" class="input-control" placeholder="เลขประจำตัวประชาชน 13 หลัก (ตัวเลขเท่านั้น)"
+                      maxlength="13" inputmode="numeric" style="font-weight: 600;">
                   </div>
                   <div class="info-item">
                     <label class="info-label">พรรษา:</label>
@@ -499,8 +499,8 @@
               <div class="profile-info-grid" style="flex: 1; margin-bottom: 0;">
               <div class="info-item">
                 <label class="info-label" style="font-weight: 700; color: #0369a1;">เลขประจำตัวประชาชน (Primary Key):</label>
-                <input type="text" id="layIdCard" class="input-control" placeholder="เลขบัตร 13 หลัก (หากไม่มีให้กรอกเบอร์โทร)"
-                  maxlength="20">
+                <input type="text" id="layIdCard" class="input-control" placeholder="เลขบัตร 13 หลัก (ตัวเลขเท่านั้น)"
+                  maxlength="13" inputmode="numeric">
               </div>
 
               <div class="info-item">
@@ -534,7 +534,7 @@
             <div class="profile-info-grid">
               <div class="info-item">
                 <label class="info-label">เบอร์โทรศัพท์มือถือ (ใช้เป็น Primary Key หากไม่มีเลขบัตร):</label>
-                <input type="text" id="layPhone" class="input-control" placeholder="08x-xxx-xxxx">
+                <input type="text" id="layPhone" class="input-control" placeholder="08xxxxxxxx (ตัวเลข 10 หลัก ไม่มี -)" maxlength="10" inputmode="numeric">
               </div>
               <div class="info-item">
                 <label class="info-label">เบอร์ติดต่อกรณีฉุกเฉิน (ไม่บังคับ):</label>
@@ -1094,7 +1094,7 @@
 
   <!-- Scripts with Cache Buster -->
   <script src="monks_data.js?v=20261116_3"></script>
-  <script src="app.js?v=20261116_6"></script>
+  <script src="app.js?v=20261116_7"></script>
 </body>
 
 </html>

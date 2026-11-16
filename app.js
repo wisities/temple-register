@@ -604,11 +604,20 @@ function switchTab(tabId) {
     p.classList.toggle("active", p.id === tabId);
   });
 
-  // Refresh table when viewing report
+  // Refresh table when viewing report or auto-fill layperson card if inserted
   if (tabId === "tab-report") {
     renderReportTable();
   } else if (tabId === "tab-slip") {
     renderSlipMonksTable();
+  } else if (tabId === "tab-lay") {
+    const layCardEl = document.getElementById("layIdCard");
+    if (SmartCardService.lastCardInserted && (!layCardEl || !layCardEl.value.trim())) {
+      if (SmartCardService.lastCardData) {
+        onLayCardRead(SmartCardService.lastCardData);
+      } else {
+        SmartCardService.readCurrentCard("tab-lay");
+      }
+    }
   }
 }
 

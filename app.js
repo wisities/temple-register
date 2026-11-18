@@ -114,14 +114,25 @@ function closeResultPopup() {
 }
 window.closeResultPopup = closeResultPopup;
 
+function extractDriveId(url) {
+  const s = (url || "").toString().trim();
+  if (!s) return "";
+  const m1 = s.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (m1 && m1[1]) return m1[1];
+  const m2 = s.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (m2 && m2[1]) return m2[1];
+  return "";
+}
+
 function normalizeDriveImageUrl(url) {
   const s = (url || "").toString().trim();
   if (!s) return "";
   if (s.startsWith("data:image")) return s;
-  const m1 = s.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
-  if (m1 && m1[1]) return `https://lh3.googleusercontent.com/d/${m1[1]}=s400`;
-  const m2 = s.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-  if (m2 && m2[1] && s.includes("drive.google.com")) return `https://lh3.googleusercontent.com/d/${m2[1]}=s400`;
+  const driveId = extractDriveId(s);
+  if (driveId) {
+    // ใช้ Google Drive Thumbnail API ขนาด 400px ซึ่งเสถียรและไม่ติด Rate Limit ง่ายเหมือนลิงก์เต็ม
+    return `https://drive.google.com/thumbnail?id=${driveId}&sz=w400`;
+  }
   return s;
 }
 
@@ -135,7 +146,15 @@ function setPhotoPreview(imgId, emptyId, src, cameraControlsId = "") {
   const hasPhoto = cleanSrc !== "" && !cleanSrc.includes("monk_avatar.jpg") && !cleanSrc.includes("receiver_avatar.jpg");
   if (imgEl) {
     if (hasPhoto) {
+      let triedFallback = false;
       imgEl.onerror = () => {
+        // Fallback 1: ถ้า thumbnail โหลดไม่ติด ลองสลับไปใช้ lh3.googleusercontent.com
+        const driveId = extractDriveId(cleanSrc);
+        if (!triedFallback && driveId) {
+          triedFallback = true;
+          imgEl.src = `https://lh3.googleusercontent.com/d/${driveId}=s400`;
+          return;
+        }
         imgEl.style.display = "none";
         if (emptyEl) emptyEl.style.display = "block";
         if (controlsEl) controlsEl.style.display = "flex";
@@ -148,7 +167,6 @@ function setPhotoPreview(imgId, emptyId, src, cameraControlsId = "") {
     }
   }
   if (emptyEl) emptyEl.style.display = hasPhoto ? "none" : "block";
-  // ถ้ามีรูปจากบัตร/ฐานข้อมูลแล้ว ไม่ต้องแสดงปุ่มถ่ายกล้อง; แสดงเฉพาะกรณีที่ไม่มีรูป
   if (controlsEl) controlsEl.style.display = hasPhoto ? "none" : "flex";
 }
 

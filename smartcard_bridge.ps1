@@ -287,6 +287,8 @@ function Send-JsonResponse($response, $obj, $statusCode = 200) {
     $response.ContentType = "application/json; charset=utf-8"
     $response.AddHeader("Access-Control-Allow-Origin", "*")
     $response.AddHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+    $response.AddHeader("Access-Control-Allow-Headers", "*")
+    $response.AddHeader("Access-Control-Allow-Private-Network", "true")
     $json = $obj | ConvertTo-Json -Depth 5 -Compress
     $bytes = [System.Text.Encoding]::UTF8.GetBytes($json)
     $response.ContentLength64 = $bytes.Length
@@ -380,6 +382,8 @@ while ($listener.IsListening) {
         if ($request.HttpMethod -eq "OPTIONS") {
             $response.AddHeader("Access-Control-Allow-Origin", "*")
             $response.AddHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+            $response.AddHeader("Access-Control-Allow-Headers", "*")
+            $response.AddHeader("Access-Control-Allow-Private-Network", "true")
             $response.StatusCode = 204
             $response.OutputStream.Close()
             continue

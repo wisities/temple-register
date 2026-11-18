@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>คู่มือการใช้งานระบบลงทะเบียนเข้างานวัดหนองป่าพง</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap');
+
+    @page {
+      size: A4 portrait;
+      margin: 8mm 10mm;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Sarabun', 'Segoe UI', Tahoma, sans-serif;
+      color: #1e293b;
+      background: #ffffff;
+      font-size: 13px;
+      line-height: 1.4;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .page-container {
+      width: 100%;
+      max-height: 278mm;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    /* HEADER */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      border-bottom: 2px solid #b45309;
+      padding-bottom: 8px;
+      margin-bottom: 10px;
+    }
+
+    .header-logo {
+      width: 62px;
+      height: 62px;
+      object-fit: contain;
+      border-radius: 50%;
+      border: 1px solid #e2e8f0;
+      background: #fff;
+    }
+
+    .header-text h1 {
+      font-size: 20px;
+      font-weight: 700;
+      color: #78350f;
+      letter-spacing: -0.3px;
+    }
+
+    .header-text p {
+      font-size: 12.5px;
+      color: #475569;
+      margin-top: 1px;
+    }
+
+    .header-badge {
+      margin-left: auto;
+      text-align: right;
+    }
+
+    .badge-pill {
+      display: inline-block;
+      background: #fef3c7;
+      color: #92400e;
+      border: 1px solid #fde68a;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 12px;
+    }
+
+    /* GRID & SECTIONS */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 9px;
+    }
+
+    .card {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 9px 12px;
+      position: relative;
+    }
+
+    .card-title {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      border-bottom: 1px dashed #e2e8f0;
+      padding-bottom: 4px;
+    }
+
+    .step-item {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 6px;
+      align-items: flex-start;
+    }
+
+    .step-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .step-num {
+      width: 20px;
+      height: 20px;
+      background: #b45309;
+      color: #fff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .step-content strong {
+      color: #0f172a;
+      font-weight: 600;
+    }
+
+    .step-content p {
+      font-size: 12px;
+      color: #475569;
+    }
+
+    /* STATUS ROW */
+    .status-box {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 6px 10px;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 9px;
+    }
+
+    .status-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+    }
+
+    /* WORKFLOW SECTION */
+    .workflow-container {
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 9px 12px;
+      margin-bottom: 9px;
+      background: #fff;
+    }
+
+    .wf-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+      margin-top: 6px;
+    }
+
+    .wf-col {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 7px 9px;
+    }
+
+    .wf-col-title {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: #1e3a8a;
+      margin-bottom: 5px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .wf-col ul {
+      list-style: none;
+      font-size: 11.8px;
+      color: #334155;
+    }
+
+    .wf-col li {
+      margin-bottom: 4px;
+      padding-left: 12px;
+      position: relative;
+    }
+
+    .wf-col li::before {
+      content: "•";
+      position: absolute;
+      left: 0;
+      color: #b45309;
+      font-weight: bold;
+    }
+
+    /* TROUBLESHOOTING & TIPS */
+    .tips-card {
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      border-radius: 8px;
+      padding: 8px 12px;
+      margin-bottom: 8px;
+    }
+
+    .tips-title {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: #92400e;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .tips-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      font-size: 11.8px;
+      color: #78350f;
+    }
+
+    /* FOOTER */
+    .footer {
+      border-top: 1px solid #e2e8f0;
+      padding-top: 5px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: #64748b;
+    }
+
+    .footer-left strong {
+      color: #0f172a;
+    }
+  </style>
+</head>
+<body>
+  <div class="page-container">
+    
+    <!-- HEADER -->
+    <div class="header">
+      <img src="final logo.png" alt="วัดหนองป่าพง" class="header-logo" onerror="this.src='logo_0.jpg'">
+      <div class="header-text">
+        <h1>คู่มือการใช้งานระบบลงทะเบียนเข้างานวัดหนองป่าพง</h1>
+        <p>คู่มือปฏิบัติงานสำหรับเจ้าหน้าที่ประจำจุดลงทะเบียน (Desktop Application & Smart Card)</p>
+      </div>
+      <div class="header-badge">
+        <span class="badge-pill">ฉบับหน้างาน v1.0</span>
+        <div style="font-size: 10.5px; color: #64748b; margin-top: 2px;">อัปเดต: พฤศจิกายน 2026</div>
+      </div>
+    </div>
+
+    <!-- QUICK SETUP & PREPARATION -->
+    <div class="grid-2">
+      <!-- CARD 1: การเริ่มใช้งานครั้งแรก -->
+      <div class="card">
+        <div class="card-title">
+          <span>🚀</span> ขั้นตอนการติดตั้งและเปิดโปรแกรม
+        </div>
+        <div class="step-item">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <strong>แตกไฟล์ ZIP:</strong>
+            <p>แตกไฟล์ <code>TempleRegister_v1.0.zip</code> ไว้ในเครื่อง (เช่น หน้า Desktop หรือไดรฟ์ D:\)</p>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <strong>สร้างไอคอนทางลัด (ทำครั้งแรกครั้งเดียว):</strong>
+            <p>ดับเบิลคลิกไฟล์ <strong>"สร้างทางลัดบนDesktop.bat"</strong> จะมีไอคอนโผล่บนหน้าจอ</p>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <strong>เปิดใช้งาน:</strong>
+            <p>ดับเบิลคลิกไอคอน <strong>"ระบบลงทะเบียนเข้างานวัด"</strong> บนหน้าจอ Desktop เพื่อเริ่มงาน</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- CARD 2: การเตรียมอุปกรณ์หน้างาน -->
+      <div class="card">
+        <div class="card-title">
+          <span>🔌</span> การเตรียมอุปกรณ์และสัญญาณเครือข่าย
+        </div>
+        <div class="step-item">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <strong>เสียบสายเครื่องอ่านบัตร USB:</strong>
+            <p>เสียบเข้าช่อง USB ของคอมพิวเตอร์ให้แน่น (ไฟที่เครื่องอ่านจะติดสว่าง)</p>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <strong>เชื่อมต่ออินเทอร์เน็ต:</strong>
+            <p>เชื่อมต่อ Wi-Fi ของวัด หรือปล่อย Hotspot จากมือถือ (กินเน็ตน้อยมาก)</p>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <strong>ตรวจสอบกล้องเว็บแคม (ถ้ามี):</strong>
+            <p>ใช้สำหรับถ่ายรูปใบปวารณา/สลิป หรือรูปพระสงฆ์นอกรายชื่อ</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATUS BAR CHECK -->
+    <div class="status-box">
+      <div class="status-item">
+        <div class="status-dot"></div>
+        <span><strong>เครื่องอ่านบัตร:</strong> ออนไลน์ พร้อมเสียบบัตรประชาชน (ไม่ต้องต่อเน็ตก็อ่านได้)</span>
+      </div>
+      <div class="status-item">
+        <div class="status-dot"></div>
+        <span><strong>Google Sheets:</strong> ซิงค์ข้อมูลขึ้นคลาวด์แบบ Real-time ทุกโต๊ะเห็นข้อมูลตรงกัน</span>
+      </div>
+    </div>
+
+    <!-- WORKFLOWS -->
+    <div class="workflow-container">
+      <div class="card-title" style="margin-bottom: 2px;">
+        <span>📋</span> ขั้นตอนการลงทะเบียนหน้างาน (3 ส่วนหลัก)
+      </div>
+      <div class="wf-grid">
+        <!-- WF 1: พระสงฆ์ -->
+        <div class="wf-col">
+          <div class="wf-col-title">
+            <span>🟤</span> 1. ลงทะเบียนพระสงฆ์
+          </div>
+          <ul>
+            <li><strong>เสียบบัตรประชาชน:</strong> ระบบจะค้นหารายชื่อจากฐานข้อมูล 422 รูปอัตโนมัติ</li>
+            <li><strong>พบบัตรตรง:</strong> กด <em>"ยืนยันการลงทะเบียน"</em> เพื่อบันทึกเวลาเข้างาน</li>
+            <li><strong>ไม่พบในรายชื่อ:</strong> ระบบเปิดหน้า <em>"เพิ่มพระนอกรายชื่อ"</em> พร้อมดึงข้อมูลจากบัตรให้อัตโนมัติ</li>
+            <li><strong>จ่ายปัจจัย:</strong> เข้าเมนูจ่ายปัจจัย ถ่ายภาพสลิป/ใบปวารณา ระบบอัปโหลดเข้า Drive อัตโนมัติ</li>
+          </ul>
+        </div>
+
+        <!-- WF 2: ญาติโยม -->
+        <div class="wf-col">
+          <div class="wf-col-title">
+            <span>🟢</span> 2. ลงทะเบียนญาติโยม
+          </div>
+          <ul>
+            <li><strong>เสียบบัตรประชาชน:</strong> ฟอร์มเก่าจะถูกเคลียร์ออกทันที</li>
+            <li><strong>ดึงข้อมูลจากชิป:</strong> ชื่อ-สกุล, ที่อยู่, วันเกิด และรูปถ่ายหน้าตรงเด้งขึ้นจอ</li>
+            <li><strong>เบอร์โทรศัพท์:</strong> เติมเฉพาะเบอร์โทร (เป็นแบบไม่บังคับ/Optional)</li>
+            <li><strong>กดบันทึก:</strong> ข้อมูลจะถูกบันทึกลงแผ่นงานญาติโยม และอัปเดตยอดสรุปทันที</li>
+          </ul>
+        </div>
+
+        <!-- WF 3: รายงานสรุป -->
+        <div class="wf-col">
+          <div class="wf-col-title">
+            <span>📊</span> 3. สรุปรายงาน & ส่งออก
+          </div>
+          <ul>
+            <li><strong>ยอดสด Real-time:</strong> ดูจำนวนพระสงฆ์ที่มา/ยังไม่มา ยอดญาติโยม และยอดปัจจัย</li>
+            <li><strong>แยกหมวดหมู่:</strong> สลับดูแท็บพระสงฆ์ตามรายชื่อ, พระนอกรายชื่อ, ญาติโยม, และใบปวารณา</li>
+            <li><strong>ส่งออกข้อมูล:</strong> กดปุ่ม <em>"ส่งออก Excel (CSV)"</em> เพื่อนำไปสรุปผลหรือพิมพ์แจกกรรมการ</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- TROUBLESHOOTING & BEST PRACTICES -->
+    <div class="tips-card">
+      <div class="tips-title">
+        <span>💡</span> ข้อแนะนำและการแก้ไขปัญหาเบื้องต้น
+      </div>
+      <div class="tips-grid">
+        <div>
+          • <strong>เสียบบัตรแล้วข้อมูลไม่ขึ้น:</strong> ตรวจสอบว่าหันหน้าชิปสีทองเข้าถูกด้านตามลูกศรของเครื่องอ่านบัตร และเสียบบัตรให้ลึกสุด<br>
+          • <strong>พิมพ์ค้นหาแทนได้:</strong> หากผู้มาลงทะเบียนไม่มีบัตรมา สามารถพิมพ์เลข 13 หลัก หรือพิมพ์ชื่อในช่องค้นหาได้ตลอดเวลา
+        </div>
+        <div>
+          • <strong>กรณีเน็ตหลุดชั่วคราว:</strong> ตัวโปรแกรมยังอ่านบัตรและบันทึกในเครื่องได้ เมื่อต่อเน็ตข้อมูลจะส่งขึ้น Google Sheets<br>
+          • <strong>หากเครื่องแจ้งเตือนไวรัส:</strong> เป็น False Positive ให้เปิดผ่านไอคอนบน Desktop ซึ่งปลอดภัย ไม่ติดบล็อก Antivirus 100%
+        </div>
+      </div>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="footer">
+      <div class="footer-left">
+        <strong>ระบบลงทะเบียนเข้างานวัดหนองป่าพง</strong> | ฐานข้อมูลคลาวด์ Google Sheets & Google Drive
+      </div>
+      <div>
+        สำหรับเจ้าหน้าที่ฝ่ายประสานงานและลงทะเบียน | สอบถามข้อมูลเพิ่มเติมฝ่ายเทคนิค
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

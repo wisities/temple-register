@@ -703,7 +703,7 @@ function runCardReaderDiagnostics() {
       }
       if (agentText) {
         agentText.textContent = isHttps
-          ? "เว็บไซต์ทำงานบน HTTPS (ออนไลน์ wisities.github.io) เบราว์เซอร์บล็อกการเชื่อมต่อไปยัง localhost กรุณาดูคำแนะนำปลดล็อกด้านบน หรือสลับไปเปิดโหมดในเครื่อง"
+          ? "เว็บไซต์ทำงานบน HTTPS (ออนไลน์ wisities.github.io) เบราว์เซอร์บล็อกการเชื่อมต่อไปยัง localhost กรุณาดูคำแนะนำปลดล็อก Insecure Content ด้านบน"
           : "ไม่พบบริการ Smart Card Bridge (พอร์ต 8084) - กรุณารัน TempleRegister.exe หรือ start_server.bat";
       }
       if (hwBadge) {

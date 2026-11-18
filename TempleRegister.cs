@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Drawing;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
@@ -159,99 +160,112 @@ public class ThaiSmartCardReader
                 result["error"] = "No card inserted or cannot connect (rc=" + rc + ")";
                 return result;
             }
+
+            IntPtr pci = (proto == 2) ? GetPciT1() : GetPciT0();
+
+            // Select Thai ID Card Applet
+            byte[] aid = new byte[] { 0x00, 0xA4, 0x04, 0x00, 0x08, 0xA0, 0x00, 0x00, 0x00, 0x54, 0x48, 0x00, 0x01 };
+            byte[] selRes = SendApdu(hCard, pci, aid);
+            if (selRes == null)
+            {
+                // Try second MOI applet
+                byte[] aid2 = new byte[] { 0x00, 0xA4, 0x04, 0x00, 0x07, 0xA0, 0x00, 0x00, 0x01, 0x77, 0x10, 0x02 };
+                SendApdu(hCard, pci, aid2);
+            }
+
+            // Read CID (13 digits)
+            byte[] reqCid = new byte[] { 0x80, 0xb0, 0x00, 0x04, 0x02, 0x00, 0x0d };
+            byte[] respCid = SendApdu(hCard, pci, reqCid);
+            if (respCid != null)
+            {
+                result["cid"] = DecodeThai(respCid);
+            }
+
+            // Read Thai Fullname
+            byte[] reqName = new byte[] { 0x80, 0xb0, 0x00, 0x11, 0x02, 0x00, 0x64 };
+            byte[] respName = SendApdu(hCard, pci, reqName);
+            if (respName != null)
+            {
+                string rawName = DecodeThai(respName);
+                string[] parts = rawName.Split('#');
+                result["title"] = parts.Length > 0 ? parts[0].Trim() : "";
+                result["firstName"] = parts.Length > 1 ? parts[1].Trim() : "";
+                result["middleName"] = parts.Length > 2 ? parts[2].Trim() : "";
+                result["lastName"] = parts.Length > 3 ? parts[3].Trim() : "";
+                result["fullname"] = (result["title"] + " " + result["firstName"] + " " + result["lastName"]).Trim();
+            }
+
+            // Read English Name
+            byte[] reqNameEn = new byte[] { 0x80, 0xb0, 0x00, 0x75, 0x02, 0x00, 0x64 };
+            byte[] respNameEn = SendApdu(hCard, pci, reqNameEn);
+            if (respNameEn != null)
+            {
+                string rawNameEn = DecodeThai(respNameEn);
+                string[] partsEn = rawNameEn.Split('#');
+                result["nameEn"] = string.Join(" ", partsEn).Trim();
+            }
+
+            // Read Date of Birth (YYYYMMDD)
+            byte[] reqDob = new byte[] { 0x80, 0xb0, 0x00, 0xD9, 0x02, 0x00, 0x08 };
+            byte[] respDob = SendApdu(hCard, pci, reqDob);
+            if (respDob != null)
+            {
+                result["dob"] = DecodeThai(respDob);
+            }
+
+            // Read Gender (1=ชาย, 2=หญิง)
+            byte[] reqGender = new byte[] { 0x80, 0xb0, 0x00, 0xE1, 0x02, 0x00, 0x01 };
+            byte[] respGender = SendApdu(hCard, pci, reqGender);
+            if (respGender != null)
+            {
+                string g = DecodeThai(respGender);
+                result["gender"] = (g == "1") ? "ชาย" : ((g == "2") ? "หญิง" : g);
+            }
+
+            // Read Address
+            byte[] reqAddr = new byte[] { 0x80, 0xb0, 0x15, 0x79, 0x02, 0x00, 0x64 };
+            byte[] respAddr = SendApdu(hCard, pci, reqAddr);
+            if (respAddr != null)
+            {
+                string rawAddr = DecodeThai(respAddr).Replace("#", " ").Trim();
+                result["address"] = rawAddr;
+            }
+
+            // Read Photo (approx 20 parts of 254 bytes)
             try
             {
-                IntPtr pci = (proto == 2) ? GetPciT1() : GetPciT0();
-                // Select Thai National ID Applet
-                byte[] selectCmd = new byte[] { 0x00, 0xA4, 0x04, 0x00, 0x08, 0xA0, 0x00, 0x00, 0x00, 0x54, 0x48, 0x00, 0x01 };
-                SendApdu(hCard, pci, selectCmd);
-
-                // 1. CID (13 digits)
-                byte[] cidBytes = SendApdu(hCard, pci, new byte[] { 0x80, 0xB0, 0x00, 0x04, 0x02, 0x00, 0x0D });
-                string cid = DecodeThai(cidBytes);
-
-                // 2. Thai Fullname (100 bytes)
-                byte[] thNameBytes = SendApdu(hCard, pci, new byte[] { 0x80, 0xB0, 0x00, 0x11, 0x02, 0x00, 0x64 });
-                string thNameRaw = DecodeThai(thNameBytes);
-
-                // 3. DOB (8 bytes YYYYMMDD BE)
-                byte[] dobBytes = SendApdu(hCard, pci, new byte[] { 0x80, 0xB0, 0x00, 0xD9, 0x02, 0x00, 0x08 });
-                string dobRaw = DecodeThai(dobBytes);
-
-                // 4. Gender (1 byte: 1=Male, 2=Female)
-                byte[] genderBytes = SendApdu(hCard, pci, new byte[] { 0x80, 0xB0, 0x00, 0xE1, 0x02, 0x00, 0x01 });
-                string genderRaw = DecodeThai(genderBytes);
-
-                // 5. Address (100 bytes)
-                byte[] addrBytes = SendApdu(hCard, pci, new byte[] { 0x80, 0xB0, 0x15, 0x79, 0x02, 0x00, 0x64 });
-                string addrRaw = DecodeThai(addrBytes);
-
-                // 6. Photo
-                var photoMs = new System.IO.MemoryStream();
-                for (int i = 0; i < 20; i++)
+                List<byte> photoBytes = new List<byte>();
+                for (int part = 0; part < 20; part++)
                 {
-                    int offset = 0x017B + (i * 0xFF);
+                    int offset = 0x017B + (part * 254);
                     byte p1 = (byte)((offset >> 8) & 0xFF);
                     byte p2 = (byte)(offset & 0xFF);
-                    byte le = (byte)((i == 19) ? 0x16 : 0xFF);
-                    byte[] chunk = SendApdu(hCard, pci, new byte[] { 0x80, 0xB0, p1, p2, 0x02, 0x00, le });
-                    if (chunk == null && i == 19)
-                    {
-                        chunk = SendApdu(hCard, pci, new byte[] { 0x80, 0xB0, p1, p2, 0x02, 0x00, 0xFF });
-                    }
+                    byte[] reqPhoto = new byte[] { 0x80, 0xb0, p1, p2, 0x02, 0x00, 0xFE };
+                    byte[] chunk = SendApdu(hCard, pci, reqPhoto);
                     if (chunk != null && chunk.Length > 0)
                     {
-                        photoMs.Write(chunk, 0, chunk.Length);
+                        photoBytes.AddRange(chunk);
+                    }
+                    else
+                    {
+                        break;
                     }
                 }
-                byte[] rawPhoto = photoMs.ToArray();
-                string photoBase64 = "";
-                if (rawPhoto.Length > 4)
+                if (photoBytes.Count > 100)
                 {
-                    int soi = -1;
-                    int eoi = -1;
-                    for (int idx = 0; idx < rawPhoto.Length - 1; idx++)
-                    {
-                        if (soi == -1 && rawPhoto[idx] == 0xFF && rawPhoto[idx + 1] == 0xD8) soi = idx;
-                        if (soi != -1 && rawPhoto[idx] == 0xFF && rawPhoto[idx + 1] == 0xD9) eoi = idx + 2;
-                    }
-                    if (soi != -1 && eoi > soi)
-                    {
-                        byte[] jpg = new byte[eoi - soi];
-                        Array.Copy(rawPhoto, soi, jpg, 0, jpg.Length);
-                        photoBase64 = "data:image/jpeg;base64," + Convert.ToBase64String(jpg);
-                    }
-                    else if (rawPhoto[0] == 0xFF && rawPhoto[1] == 0xD8)
-                    {
-                        photoBase64 = "data:image/jpeg;base64," + Convert.ToBase64String(rawPhoto);
-                    }
+                    result["photoBase64"] = "data:image/jpeg;base64," + Convert.ToBase64String(photoBytes.ToArray());
                 }
-
-                string[] nameParts = thNameRaw.Split('#');
-                string title = nameParts.Length > 0 ? nameParts[0].Trim() : "";
-                string firstName = nameParts.Length > 1 ? nameParts[1].Trim() : "";
-                string middleName = nameParts.Length > 2 ? nameParts[2].Trim() : "";
-                string lastName = nameParts.Length > 3 ? nameParts[3].Trim() : "";
-                string fullname = string.Join(" ", new[] { title, firstName, middleName, lastName }).Trim();
-                while (fullname.Contains("  ")) fullname = fullname.Replace("  ", " ");
-
-                result["status"] = "success";
-                result["cid"] = cid;
-                result["title"] = title;
-                result["firstName"] = firstName;
-                result["lastName"] = lastName;
-                result["fullname"] = fullname;
-                result["dob"] = dobRaw;
-                result["gender"] = genderRaw;
-                result["address"] = addrRaw.Replace("#", " ").Trim();
-                result["photoBase64"] = photoBase64;
-                result["readerName"] = readerName;
-                return result;
             }
-            finally
-            {
-                SCardDisconnect(hCard, 0);
-            }
+            catch { }
+
+            SCardDisconnect(hCard, 0);
+            result["status"] = "success";
+            return result;
+        }
+        catch (Exception ex)
+        {
+            result["error"] = ex.Message;
+            return result;
         }
         finally
         {
@@ -264,10 +278,10 @@ public class Program
 {
     private static HttpListener serverListener;
     private static HttpListener bridgeListener;
-    private static Process pEdge;
     private static string baseDir;
     private static int currentServerPort = 8080;
     private static List<WebSocket> wsClients = new List<WebSocket>();
+    private static NotifyIcon notifyIcon;
 
     private static readonly Dictionary<string, string> mimeTypes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
     {
@@ -369,49 +383,62 @@ public class Program
                         var readers = ThaiSmartCardReader.ListReaders();
                         if (readers.Count > 0)
                         {
-                            bool present = ThaiSmartCardReader.IsCardPresent(readers[0]);
-                            if (present && !wasPresent)
+                            bool isNowPresent = ThaiSmartCardReader.IsCardPresent(readers[0]);
+                            if (isNowPresent && !wasPresent)
                             {
-                                Thread.Sleep(250);
-                                string cardJson = BuildCardJson();
-                                BroadcastWs(cardJson);
+                                // Card just inserted! Read and broadcast to WebSockets
+                                Thread.Sleep(300);
+                                var cardData = ThaiSmartCardReader.ReadThaiIdCard(readers[0]);
+                                if (cardData != null && cardData.ContainsKey("cid"))
+                                {
+                                    StringBuilder sb = new StringBuilder();
+                                    sb.Append("{\"type\":\"card_inserted\",\"data\":{");
+                                    int c = 0;
+                                    foreach (var kvp in cardData)
+                                    {
+                                        if (c > 0) sb.Append(",");
+                                        sb.Append("\"" + EscapeJson(kvp.Key) + "\":\"" + EscapeJson(kvp.Value) + "\"");
+                                        c++;
+                                    }
+                                    sb.Append("}}");
+                                    BroadcastWebSocket(sb.ToString());
+                                }
                             }
-                            wasPresent = present;
+                            wasPresent = isNowPresent;
                         }
                         else
                         {
                             wasPresent = false;
                         }
                     }
-                    catch { wasPresent = false; }
-                    Thread.Sleep(500);
+                    catch { }
+                    Thread.Sleep(800);
                 }
             });
         }
         catch { }
     }
 
-    private static void BroadcastWs(string text)
+    private static void BroadcastWebSocket(string message)
     {
-        byte[] bytes = Encoding.UTF8.GetBytes(text);
-        var seg = new ArraySegment<byte>(bytes);
+        byte[] bytes = Encoding.UTF8.GetBytes(message);
         lock (wsClients)
         {
             for (int i = wsClients.Count - 1; i >= 0; i--)
             {
-                try
+                var ws = wsClients[i];
+                if (ws != null && ws.State == WebSocketState.Open)
                 {
-                    var ws = wsClients[i];
-                    if (ws.State == WebSocketState.Open)
+                    try
                     {
-                        ws.SendAsync(seg, WebSocketMessageType.Text, true, CancellationToken.None).Wait();
+                        ws.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
                     }
-                    else
-                    {
-                        wsClients.RemoveAt(i);
-                    }
+                    catch { }
                 }
-                catch { wsClients.RemoveAt(i); }
+                else
+                {
+                    wsClients.RemoveAt(i);
+                }
             }
         }
     }
@@ -423,10 +450,14 @@ public class Program
             var req = context.Request;
             var res = context.Response;
 
-            res.AddHeader("Access-Control-Allow-Origin", "*");
+            string origin = req.Headers["Origin"];
+            if (string.IsNullOrEmpty(origin)) origin = "*";
+
+            res.AddHeader("Access-Control-Allow-Origin", origin);
             res.AddHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-            res.AddHeader("Access-Control-Allow-Headers", "*");
+            res.AddHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
             res.AddHeader("Access-Control-Allow-Private-Network", "true");
+            res.AddHeader("Access-Control-Max-Age", "86400");
 
             if (req.HttpMethod == "OPTIONS")
             {
@@ -443,20 +474,32 @@ public class Program
 
                 string initStatus = "{\"type\":\"status\",\"data\":" + BuildStatusJson() + "}";
                 byte[] initBytes = Encoding.UTF8.GetBytes(initStatus);
-                ws.SendAsync(new ArraySegment<byte>(initBytes), WebSocketMessageType.Text, true, CancellationToken.None).Wait();
+                ws.SendAsync(new ArraySegment<byte>(initBytes), WebSocketMessageType.Text, true, CancellationToken.None);
 
-                ThreadPool.QueueUserWorkItem((o) =>
+                ThreadPool.QueueUserWorkItem(async (o) =>
                 {
-                    byte[] buf = new byte[4096];
+                    byte[] buffer = new byte[1024];
                     while (ws.State == WebSocketState.Open)
                     {
                         try
                         {
-                            var r = ws.ReceiveAsync(new ArraySegment<byte>(buf), CancellationToken.None).GetAwaiter().GetResult();
-                            if (r.MessageType == WebSocketMessageType.Close) break;
-                            string reply = BuildCardJson();
-                            byte[] repBytes = Encoding.UTF8.GetBytes(reply);
-                            ws.SendAsync(new ArraySegment<byte>(repBytes), WebSocketMessageType.Text, true, CancellationToken.None).Wait();
+                            var r = await ws.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+                            if (r.MessageType == WebSocketMessageType.Close)
+                            {
+                                await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
+                                break;
+                            }
+                            else if (r.MessageType == WebSocketMessageType.Text)
+                            {
+                                string msg = Encoding.UTF8.GetString(buffer, 0, r.Count);
+                                if (msg.Contains("read_card") || msg.Contains("\"read\""))
+                                {
+                                    string cardJson = BuildCardJson();
+                                    string outMsg = "{\"type\":\"card_read\",\"data\":" + cardJson + "}";
+                                    byte[] outBytes = Encoding.UTF8.GetBytes(outMsg);
+                                    await ws.SendAsync(new ArraySegment<byte>(outBytes), WebSocketMessageType.Text, true, CancellationToken.None);
+                                }
+                            }
                         }
                         catch { break; }
                     }
@@ -465,27 +508,30 @@ public class Program
                 return;
             }
 
-            string path = req.Url.LocalPath.TrimEnd('/');
-            string json = "";
+            string rawPath = req.Url.LocalPath.ToLowerInvariant();
+            res.ContentType = "application/json; charset=utf-8";
 
-            if (path == "/api/status" || string.IsNullOrEmpty(path))
+            if (rawPath == "/api/status" || rawPath == "/status")
             {
-                json = BuildStatusJson();
+                string json = BuildStatusJson();
+                byte[] b = Encoding.UTF8.GetBytes(json);
+                res.ContentLength64 = b.Length;
+                res.OutputStream.Write(b, 0, b.Length);
             }
-            else if (path == "/api/card")
+            else if (rawPath == "/api/card" || rawPath == "/card")
             {
-                json = BuildCardJson();
+                string json = BuildCardJson();
+                byte[] b = Encoding.UTF8.GetBytes(json);
+                res.ContentLength64 = b.Length;
+                res.OutputStream.Write(b, 0, b.Length);
             }
             else
             {
-                res.StatusCode = 404;
-                json = "{\"error\":\"Not Found\"}";
+                string json = "{\"status\":\"ok\",\"service\":\"TempleRegister Bridge\",\"port\":8084}";
+                byte[] b = Encoding.UTF8.GetBytes(json);
+                res.ContentLength64 = b.Length;
+                res.OutputStream.Write(b, 0, b.Length);
             }
-
-            res.ContentType = "application/json; charset=utf-8";
-            byte[] b = Encoding.UTF8.GetBytes(json);
-            res.ContentLength64 = b.Length;
-            res.OutputStream.Write(b, 0, b.Length);
             res.Close();
         }
         catch { }
@@ -494,17 +540,15 @@ public class Program
     private static int StartBuiltinHttpServer()
     {
         int[] candidatePorts = new int[] { 8080, 8081, 8082, 8088, 8888, 9090 };
-
-        foreach (int port in candidatePorts)
+        foreach (int p in candidatePorts)
         {
             try
             {
-                var listener = new HttpListener();
-                listener.Prefixes.Add("http://localhost:" + port + "/");
-                listener.Start();
-
-                serverListener = listener;
-                currentServerPort = port;
+                var l = new HttpListener();
+                l.Prefixes.Add("http://localhost:" + p + "/");
+                l.Start();
+                serverListener = l;
+                currentServerPort = p;
 
                 ThreadPool.QueueUserWorkItem((o) =>
                 {
@@ -512,29 +556,31 @@ public class Program
                     {
                         try
                         {
-                            var context = serverListener.GetContext();
-                            ThreadPool.QueueUserWorkItem((c) => HandleRequest((HttpListenerContext)c), context);
+                            var ctx = serverListener.GetContext();
+                            ThreadPool.QueueUserWorkItem((c) => HandleHttpRequest((HttpListenerContext)c), ctx);
                         }
                         catch { }
                     }
                 });
 
-                return port;
+                return p;
             }
             catch { }
         }
-
         return -1;
     }
 
-    private static void HandleRequest(HttpListenerContext context)
+    private static void HandleHttpRequest(HttpListenerContext context)
     {
         try
         {
             var req = context.Request;
             var res = context.Response;
 
-            res.AddHeader("Access-Control-Allow-Origin", "*");
+            string origin = req.Headers["Origin"];
+            if (string.IsNullOrEmpty(origin)) origin = "*";
+
+            res.AddHeader("Access-Control-Allow-Origin", origin);
             res.AddHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
             res.AddHeader("Access-Control-Allow-Private-Network", "true");
 
@@ -548,14 +594,17 @@ public class Program
             string urlPath = req.Url.LocalPath.TrimStart('/');
             if (string.IsNullOrEmpty(urlPath)) urlPath = "index.html";
 
-            string decoded = Uri.UnescapeDataString(urlPath).Replace('/', Path.DirectorySeparatorChar);
-            string filePath = Path.Combine(baseDir, decoded);
+            string decoded = Uri.UnescapeDataString(urlPath);
+            string filePath = Path.Combine(baseDir, decoded.Replace('/', Path.DirectorySeparatorChar));
 
             if (File.Exists(filePath))
             {
                 string ext = Path.GetExtension(filePath);
                 string mime;
-                if (!mimeTypes.TryGetValue(ext, out mime)) mime = "application/octet-stream";
+                if (!mimeTypes.TryGetValue(ext, out mime))
+                {
+                    mime = "application/octet-stream";
+                }
                 res.ContentType = mime;
 
                 byte[] bytes = File.ReadAllBytes(filePath);
@@ -572,6 +621,35 @@ public class Program
             res.Close();
         }
         catch { }
+    }
+
+    public static void LaunchBrowser(string url)
+    {
+        string edgePath = @"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe";
+        if (!File.Exists(edgePath)) edgePath = @"C:\Program Files\Microsoft\Edge\Application\msedge.exe";
+        string chromePath = @"C:\Program Files\Google\Chrome\Application\chrome.exe";
+        if (!File.Exists(chromePath)) chromePath = @"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe";
+
+        string browserPath = File.Exists(edgePath) ? edgePath : (File.Exists(chromePath) ? chromePath : null);
+
+        if (browserPath != null)
+        {
+            try
+            {
+                string profileDir = Path.Combine(Path.GetTempPath(), "TempleRegisterProfile");
+                var psi = new ProcessStartInfo
+                {
+                    FileName = browserPath,
+                    Arguments = "--app=" + url + " --disable-features=Translate --no-first-run --no-default-browser-check --user-data-dir=\"" + profileDir + "\" --window-size=1366,768",
+                    UseShellExecute = true
+                };
+                Process.Start(psi);
+                return;
+            }
+            catch { }
+        }
+
+        try { Process.Start(url); } catch { }
     }
 
     [STAThread]
@@ -591,68 +669,97 @@ public class Program
             return;
         }
 
-        // 2. เริ่มต้น Built-in Smart Card Bridge ทันที (Port 8084 แบบ Pure C# ไร้ PowerShell)
-        StartBuiltinBridgeServer(8084);
-
-        // 3. เริ่มต้น Built-in Web Server ทันทีในระดับ C#
-        int activePort = StartBuiltinHttpServer();
-        if (activePort == -1)
+        // 2. ตรวจสอบ Single Instance Mutex เพื่อป้องกันการรันซ้อนทับกัน
+        bool isNewInstance;
+        using (Mutex mutex = new Mutex(true, "TempleRegister_SingleInstance_Mutex_9981", out isNewInstance))
         {
-            MessageBox.Show(
-                "ไม่สามารถเปิดบริการ Web Server ได้\nกรุณาตรวจสอบว่ามีโปรแกรมอื่นเปิดค้างอยู่หรือไม่",
-                "ระบบลงทะเบียนเข้างานวัดหนองป่าพง",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Error
-            );
-            return;
-        }
+            if (!isNewInstance)
+            {
+                // โปรแกรมทำงานอยู่แล้ว ให้เปิดหน้าต่างเว็บแล้วปิดตัวอินสแตนซ์ที่สอง
+                LaunchBrowser("http://localhost:8080/");
+                return;
+            }
 
-        string targetUrl = "http://localhost:" + activePort + "/";
+            // 3. เริ่มต้น Built-in Smart Card Bridge ทันที (Port 8084 แบบ Pure C#)
+            StartBuiltinBridgeServer(8084);
 
-        // 4. ตรวจหา Microsoft Edge หรือ Google Chrome เพื่อเปิดในโหมด App
-        string edgePath = @"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe";
-        if (!File.Exists(edgePath))
-        {
-            edgePath = @"C:\Program Files\Microsoft\Edge\Application\msedge.exe";
-        }
-        string chromePath = @"C:\Program Files\Google\Chrome\Application\chrome.exe";
-        if (!File.Exists(chromePath))
-        {
-            chromePath = @"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe";
-        }
+            // 4. เริ่มต้น Built-in Web Server ทันทีในระดับ C#
+            int activePort = StartBuiltinHttpServer();
+            if (activePort == -1)
+            {
+                MessageBox.Show(
+                    "ไม่สามารถเปิดบริการ Web Server ได้\nกรุณาตรวจสอบว่ามีโปรแกรมอื่นเปิดค้างอยู่หรือไม่",
+                    "ระบบลงทะเบียนเข้างานวัดหนองป่าพง",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error
+                );
+                return;
+            }
 
-        string browserPath = File.Exists(edgePath) ? edgePath : (File.Exists(chromePath) ? chromePath : null);
+            string targetUrl = "http://localhost:" + activePort + "/";
 
-        if (browserPath != null)
-        {
+            // 5. ติดตั้ง System Tray Icon เพื่อให้โปรแกรมรันเบื้องหลังได้อย่างมั่นคงตลอดเวลา
+            Application.EnableVisualStyles();
+            Application.SetCompatibleTextRenderingDefault(false);
+
+            Icon trayIco = null;
+            string icoPath = Path.Combine(baseDir, "app.ico");
+            if (File.Exists(icoPath))
+            {
+                try { trayIco = new Icon(icoPath); } catch { }
+            }
+            if (trayIco == null)
+            {
+                trayIco = SystemIcons.Application;
+            }
+
+            notifyIcon = new NotifyIcon();
+            notifyIcon.Icon = trayIco;
+            notifyIcon.Text = "ระบบลงทะเบียนเข้างานวัด (ออนไลน์ Port " + activePort + " & 8084)";
+            notifyIcon.Visible = true;
+
+            ContextMenu menu = new ContextMenu();
+            menu.MenuItems.Add("🌐 เปิดหน้าระบบลงทะเบียน (Open)", (s, e) => LaunchBrowser(targetUrl));
+            menu.MenuItems.Add("🪪 ตรวจสอบเครื่องอ่านบัตร (Smart Card)", (s, e) =>
+            {
+                var readers = ThaiSmartCardReader.ListReaders();
+                string msg = readers.Count > 0
+                    ? "✓ พบเครื่องอ่านบัตร: " + string.Join(", ", readers.ToArray())
+                    : "⚠️ ไม่พบเครื่องอ่านบัตร USB กรุณาตรวจสอบสายเสียบ";
+                notifyIcon.ShowBalloonTip(4000, "สถานะเครื่องอ่านบัตรประชาชน", msg, ToolTipIcon.Info);
+            });
+            menu.MenuItems.Add("-");
+            menu.MenuItems.Add("❌ ปิดโปรแกรมและออกจากระบบ (Exit)", (s, e) =>
+            {
+                notifyIcon.Visible = false;
+                Cleanup();
+                Application.Exit();
+            });
+
+            notifyIcon.ContextMenu = menu;
+            notifyIcon.DoubleClick += (s, e) => LaunchBrowser(targetUrl);
+
+            // แสดงแจ้งเตือนมุมขวาล่าง 1 ครั้ง
             try
             {
-                string profileDir = Path.Combine(Path.GetTempPath(), "TempleRegisterProfile");
-                var psiEdge = new ProcessStartInfo
-                {
-                    FileName = browserPath,
-                    Arguments = "--app=" + targetUrl + " --disable-features=Translate --no-first-run --no-default-browser-check --user-data-dir=\"" + profileDir + "\" --window-size=1366,768",
-                    UseShellExecute = true
-                };
-                pEdge = Process.Start(psiEdge);
-
-                if (pEdge != null)
-                {
-                    pEdge.WaitForExit();
-                }
+                notifyIcon.ShowBalloonTip(3000, "ระบบลงทะเบียนเข้างานวัด", "✓ ระบบพร้อมทำงานแล้ว (พอร์ต " + activePort + " และเครื่องอ่านบัตร 8084)", ToolTipIcon.Info);
             }
-            catch
+            catch { }
+
+            // 6. เปิดเบราว์เซอร์ครั้งแรก
+            LaunchBrowser(targetUrl);
+
+            // 7. รัน Message Loop ต่อเนื่องเพื่อไม่ให้โปรแกรมปิดตัวลงทันที
+            Application.Run();
+
+            // 8. ล้างทรัพยากรเมื่อผู้ใช้ออกจากโปรแกรม
+            if (notifyIcon != null)
             {
-                Process.Start(targetUrl);
+                notifyIcon.Visible = false;
+                notifyIcon.Dispose();
             }
+            Cleanup();
         }
-        else
-        {
-            Process.Start(targetUrl);
-        }
-
-        // 5. ปิดบริการเบื้องหลังเมื่อปิดหน้าต่างโปรแกรม
-        Cleanup();
     }
 
     private static void Cleanup()

@@ -698,13 +698,13 @@ function runCardReaderDiagnostics() {
         noticeEl.style.display = "block";
       }
       if (agentBadge) {
-        agentBadge.className = isHttps ? "status-badge pending" : "status-badge available";
-        agentBadge.textContent = isHttps ? "🔒 ติดบล็อก HTTPS" : "ยังไม่พบ Agent";
+        agentBadge.className = "status-badge pending";
+        agentBadge.textContent = "ยังไม่พบ Agent (พอร์ต 8084)";
       }
       if (agentText) {
         agentText.textContent = isHttps
-          ? "เว็บไซต์ทำงานบน HTTPS (ออนไลน์ wisities.github.io) เบราว์เซอร์บล็อกการเชื่อมต่อไปยัง localhost กรุณาดูคำแนะนำปลดล็อก Insecure Content ด้านบน"
-          : "ไม่พบบริการ Smart Card Bridge (พอร์ต 8084) - กรุณารัน TempleRegister.exe หรือ start_server.bat";
+          ? "ไม่พบบริการอ่านบัตรในเครื่อง: ต้องเปิดโปรแกรม TempleRegister.exe ในเครื่องนี้ทิ้งไว้ด้วย (สังเกตไอคอนวัดมุมขวาล่างใกล้ๆ นาฬิกา) หรือปลดล็อก Insecure content"
+          : "ไม่พบบริการ Smart Card Bridge (พอร์ต 8084) - กรุณาเปิดโปรแกรม TempleRegister.exe หรือ start_server.bat";
       }
       if (hwBadge) {
         hwBadge.className = "status-badge available";
@@ -712,7 +712,7 @@ function runCardReaderDiagnostics() {
       }
       if (hwText) {
         hwText.textContent = isHttps
-          ? "สามารถคลิก 'เชื่อมต่ออุปกรณ์ WebHID โดยตรง' หรือปลดล็อก Insecure Content เพื่อให้อ่านบัตรได้"
+          ? "สามารถเปิด TempleRegister.exe ในเครื่อง หรือคลิก 'เชื่อมต่ออุปกรณ์ WebHID โดยตรง'"
           : "ไม่สามารถตรวจสอบฮาร์ดแวร์ได้จนกว่าบริการพอร์ต 8084 จะออนไลน์";
       }
     });

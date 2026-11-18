@@ -443,18 +443,30 @@ const SmartCardService = {
       this.ws.onclose = () => {
         this.isConnected = false;
         state.smartCardConnected = false;
-        this.updateUI("disconnected", "เครื่องอ่านบัตร: ออฟไลน์ / โหมดป้อนเลขบัตร");
-        setTimeout(() => this.connect(), 3000);
+        if (window.location.protocol === "https:") {
+          this.updateUI("https-notice", "เครื่องอ่านบัตร: โหมดออนไลน์ (คลิกดูวิธีเชื่อมต่อ)");
+        } else {
+          this.updateUI("disconnected", "เครื่องอ่านบัตร: ออฟไลน์ / โหมดป้อนเลขบัตร");
+        }
+        setTimeout(() => this.connect(), 4000);
       };
       this.ws.onerror = () => {
         this.isConnected = false;
         state.smartCardConnected = false;
-        this.updateUI("disconnected", "เครื่องอ่านบัตร: ออฟไลน์ / โหมดป้อนเลขบัตร");
+        if (window.location.protocol === "https:") {
+          this.updateUI("https-notice", "เครื่องอ่านบัตร: โหมดออนไลน์ (คลิกดูวิธีเชื่อมต่อ)");
+        } else {
+          this.updateUI("disconnected", "เครื่องอ่านบัตร: ออฟไลน์ / โหมดป้อนเลขบัตร");
+        }
       };
     } catch (e) {
       this.isConnected = false;
       state.smartCardConnected = false;
-      this.updateUI("disconnected", "เครื่องอ่านบัตร: ออฟไลน์ / โหมดป้อนเลขบัตร");
+      if (window.location.protocol === "https:") {
+        this.updateUI("https-notice", "เครื่องอ่านบัตร: โหมดออนไลน์ (คลิกดูวิธีเชื่อมต่อ)");
+      } else {
+        this.updateUI("disconnected", "เครื่องอ่านบัตร: ออฟไลน์ / โหมดป้อนเลขบัตร");
+      }
     }
   },
 
@@ -466,14 +478,34 @@ const SmartCardService = {
     const textLay = document.getElementById("cardReaderTextLay");
 
     if (pill) {
-      pill.className = status === "connected" ? "smartcard-status-pill connected" : "smartcard-status-pill";
+      if (status === "connected") {
+        pill.className = "smartcard-status-pill connected";
+      } else if (status === "https-notice") {
+        pill.className = "smartcard-status-pill https-notice";
+      } else {
+        pill.className = "smartcard-status-pill";
+      }
     }
     if (pillText) pillText.textContent = text;
     if (dot) {
-      dot.style.background = status === "connected" ? "#10b981" : "#94a3b8";
+      if (status === "connected") {
+        dot.style.background = "#10b981";
+      } else if (status === "https-notice") {
+        dot.style.background = "#f59e0b";
+      } else {
+        dot.style.background = "#94a3b8";
+      }
     }
-    if (textMonk) textMonk.textContent = status === "connected" ? "🟢 เครื่องอ่านออนไลน์ (พร้อมเสียบบัตร)" : "⚪ โหมดป้อนเลขบัตร / รอเสียบบัตร";
-    if (textLay) textLay.textContent = status === "connected" ? "🟢 เครื่องอ่านออนไลน์ (พร้อมอ่านบัตร)" : "⚪ โหมดป้อนข้อมูล / รอเสียบบัตร";
+    if (textMonk) {
+      textMonk.textContent = status === "connected"
+        ? "🟢 เครื่องอ่านออนไลน์ (พร้อมเสียบบัตร)"
+        : (status === "https-notice" ? "🟡 โหมดออนไลน์ (คลิกดูวิธีเชื่อมต่อ)" : "⚪ โหมดป้อนเลขบัตร / รอเสียบบัตร");
+    }
+    if (textLay) {
+      textLay.textContent = status === "connected"
+        ? "🟢 เครื่องอ่านออนไลน์ (พร้อมอ่านบัตร)"
+        : (status === "https-notice" ? "🟡 โหมดออนไลน์ (คลิกดูวิธีเชื่อมต่อ)" : "⚪ โหมดป้อนข้อมูล / รอเสียบบัตร");
+    }
   },
 
   setupListeners() {
@@ -611,6 +643,12 @@ function runCardReaderDiagnostics() {
   const hwText = document.getElementById("diagHardwareText");
   const slotBadge = document.getElementById("diagCardSlotBadge");
   const slotText = document.getElementById("diagCardSlotText");
+  const noticeEl = document.getElementById("httpsMixedContentNotice");
+
+  const isHttps = window.location.protocol === "https:";
+  if (noticeEl) {
+    noticeEl.style.display = isHttps ? "block" : "none";
+  }
 
   if (agentBadge) {
     agentBadge.className = "status-badge pending";
@@ -620,6 +658,7 @@ function runCardReaderDiagnostics() {
   fetch("http://localhost:8084/api/status", { method: "GET" })
     .then(res => res.json())
     .then(st => {
+      if (noticeEl) noticeEl.style.display = "none";
       if (agentBadge) {
         agentBadge.className = "status-badge registered";
         agentBadge.textContent = "ออนไลน์ (พอร์ต 8084)";
@@ -655,19 +694,111 @@ function runCardReaderDiagnostics() {
       }
     })
     .catch(() => {
-      if (agentBadge) {
-        agentBadge.className = "status-badge available";
-        agentBadge.textContent = "ยังไม่พบ Agent";
+      if (noticeEl && isHttps) {
+        noticeEl.style.display = "block";
       }
-      if (agentText) agentText.textContent = "ไม่พบบริการ Smart Card Bridge (พอร์ต 8084) - กรุณารัน smartcard_bridge.ps1 หรือ start_server.bat";
+      if (agentBadge) {
+        agentBadge.className = isHttps ? "status-badge pending" : "status-badge available";
+        agentBadge.textContent = isHttps ? "🔒 ติดบล็อก HTTPS" : "ยังไม่พบ Agent";
+      }
+      if (agentText) {
+        agentText.textContent = isHttps
+          ? "เว็บไซต์ทำงานบน HTTPS (ออนไลน์ wisities.github.io) เบราว์เซอร์บล็อกการเชื่อมต่อไปยัง localhost กรุณาดูคำแนะนำปลดล็อกด้านบน หรือสลับไปเปิดโหมดในเครื่อง"
+          : "ไม่พบบริการ Smart Card Bridge (พอร์ต 8084) - กรุณารัน TempleRegister.exe หรือ start_server.bat";
+      }
       if (hwBadge) {
         hwBadge.className = "status-badge available";
-        hwBadge.textContent = "รอเชื่อมต่อ Agent";
+        hwBadge.textContent = isHttps ? "รอเชื่อมต่อ Agent / WebHID" : "รอเชื่อมต่อ Agent";
       }
-      if (hwText) hwText.textContent = "ไม่สามารถตรวจสอบฮาร์ดแวร์ได้จนกว่าบริการพอร์ต 8084 จะออนไลน์";
+      if (hwText) {
+        hwText.textContent = isHttps
+          ? "สามารถคลิก 'เชื่อมต่ออุปกรณ์ WebHID โดยตรง' หรือปลดล็อก Insecure Content เพื่อให้อ่านบัตรได้"
+          : "ไม่สามารถตรวจสอบฮาร์ดแวร์ได้จนกว่าบริการพอร์ต 8084 จะออนไลน์";
+      }
     });
 }
 window.runCardReaderDiagnostics = runCardReaderDiagnostics;
+
+// ==========================================================================
+// Global Hardware Scanner / Keyboard Wedge Card Reader Listener (Works on HTTPS)
+// ==========================================================================
+let scannerBuffer = "";
+let lastKeyTime = 0;
+
+document.addEventListener("keydown", (e) => {
+  const isInput = e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA");
+  const now = Date.now();
+  const timeDiff = now - lastKeyTime;
+  lastKeyTime = now;
+
+  if (e.key === "Enter") {
+    const cleaned = scannerBuffer.replace(/[-\s]/g, "");
+    if (cleaned.length === 13 && /^\d{13}$/.test(cleaned)) {
+      e.preventDefault();
+      handleScannedCitizenId(cleaned);
+    }
+    scannerBuffer = "";
+    return;
+  }
+
+  if (e.key && e.key.length === 1 && /\d/.test(e.key)) {
+    if (timeDiff > 250) {
+      scannerBuffer = e.key;
+    } else {
+      scannerBuffer += e.key;
+    }
+    if (scannerBuffer.length === 13 && !isInput) {
+      setTimeout(() => {
+        if (scannerBuffer.length === 13) {
+          handleScannedCitizenId(scannerBuffer);
+          scannerBuffer = "";
+        }
+      }, 80);
+    }
+  } else if (timeDiff > 250) {
+    scannerBuffer = "";
+  }
+});
+
+function handleScannedCitizenId(cid) {
+  showToast(`✓ ตรวจพบเลขบัตรประชาชน 13 หลักจากเครื่องสแกน: ${cid}`, "success");
+  const activeTab = document.querySelector(".nav-tab.active")?.getAttribute("data-tab");
+  if (activeTab === "tab-monk") {
+    const input = document.getElementById("monkIdCardInput");
+    if (input) input.value = cid;
+    triggerMonkScan(cid, { idCard: cid });
+  } else if (activeTab === "tab-lay") {
+    const input = document.getElementById("layIdCardManual");
+    if (input) input.value = cid;
+    checkAndPopulateLayperson(cid);
+  }
+}
+window.handleScannedCitizenId = handleScannedCitizenId;
+
+async function pairWebHidReader() {
+  if (!navigator.hid) {
+    showToast("เบราว์เซอร์นี้ไม่รองรับ WebHID (แนะนำให้ใช้ Google Chrome หรือ Microsoft Edge)", "warning");
+    return;
+  }
+  try {
+    const devices = await navigator.hid.requestDevice({ filters: [] });
+    if (devices && devices.length > 0) {
+      const dev = devices[0];
+      await dev.open();
+      showToast(`✓ เชื่อมต่ออุปกรณ์ ${dev.productName || "HID"} ผ่านเบราว์เซอร์สำเร็จ`, "success");
+      const badge = document.getElementById("diagHardwareBadge");
+      if (badge) {
+        badge.className = "status-badge registered";
+        badge.textContent = "เชื่อมต่อ WebHID";
+      }
+      const hwText = document.getElementById("diagHardwareText");
+      if (hwText) hwText.textContent = `เชื่อมต่อกับ ${dev.productName || "USB HID"}`;
+    }
+  } catch (err) {
+    console.warn("WebHID pairing:", err);
+  }
+}
+window.pairWebHidReader = pairWebHidReader;
 
 function updateCardMappingTable(cardObj) {
   const setCell = (valId, statusId, val) => {

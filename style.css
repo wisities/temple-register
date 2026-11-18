@@ -1070,6 +1070,17 @@ body {
   animation: pulseDot 2s infinite ease-in-out;
 }
 
+.smartcard-status-pill.https-notice {
+  background: #fffbeb;
+  color: #92400e;
+  border-color: #fde68a;
+}
+
+.smartcard-status-pill.https-notice .status-dot {
+  background: #f59e0b;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.25);
+}
+
 /* Modal Backdrop & Dialog */
 .modal-backdrop {
   position: fixed;
